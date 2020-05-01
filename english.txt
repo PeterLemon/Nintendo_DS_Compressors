@@ -1,0 +1,219 @@
+--------------------------------------------------------------------------------
+Encoders for Nintendo GBA/DS consoles                 11-Nov-2011   (c) CUE 2011
+--------------------------------------------------------------------------------
+
+This set of utilities is used to encode data used by consoles & usually cause a
+decrease in size, which makes them also be called compression, confusing the
+action itself with the effect.
+
+Some of these encodings can be handled by the BIOS, simplifying the decoding
+process since it is done directly by the console itself without having to add
+more code. Those encodings are RLE, LZSS & Huffman. LZSS encoding is often
+mistakenly called LZ77, despite having nothing to do with it.
+
+There are games that use their own encoding, & they have also been added in case
+you want to work with them. To these encodings I have put the name of LZX, LZE &
+BLZ to be able to differentiate them.
+
+LZX is also known as ONZ/LZ11 or LZ40, depending on how the information is
+stored (big endian or low endian). Its name means LZ eXtended, & it is not more
+than an improvement of a codification already used by Nintendo, called 'Yaz0'.
+
+LZE is a double LZSS where one or the other is used depending on data processed.
+Its name means LZ Enhanced.
+
+BLZ, a name that I use as an abbreviation for 'Bottom LZ', is the one used with
+DS overlays & is characterized in that it can have an unencoded part before the
+encoded part, & the latter must be treated starting from the end of the file
+(hence the 'Bottom'). Also, it is the extension used in the games that use it.
+
+LZSS encoding includes my own encoding, which although slower to run, tends to
+perform better than the traditional algorithm as it has been optimized.
+I usually call this encoding LZC or LZ-CUE, & the decoding process matches the
+one normally used, including the one used in the console BIOS, so it can be used
+without any problem.
+
+The reason for making these utilities public is because there are currently no
+utilities that do some encodings correctly, as with Huffman, LZ40, or BLZ. Also
+there are consoles, such as the GBA, that were released in 2001 & use Huffman.
+With these utilities there will no longer be any problem in using data that has
+been modified & uses any of those encodings.
+
+The executable of each one is included, as well as its source code in C with a
+GNU General Public License (GNU GPL).
+
+To test the different encoding modes, you can analyze how the files were encoded
+originally & how they are after decoding & re-encoding them. It is a good way to
+know if the encoding is done correctly, which is usually the most difficult part
+of the process.
+
+All utilities have the same syntax, starting with a command that tells us what
+actions to take, followed by one or more files, which may include wildcards in
+their name. As it is a command line process, we must bear in mind that if a file
+has spaces in its name, we must put it enclosed in quotation marks, otherwise it
+will be interpreted as two different files. The files that are generated always
+replace the original files, so it is advisable to always make a copy of
+everything before the process, which is the responsibility of the user.
+
+The utilities have all their messages in English. That is why '-e' is used to
+encode, from 'encode'. As my native language is Spanish, I prefer to explain it
+in case anyone is surprised to see some options (encode, fast, ...).
+This English text file has been translated from Spanish by krom (Peter Lemon).
+
+The data format of each type of encoding will not be explained. It's very simple
+if you have a minimum of knowledge, so there is no reason for this file to
+lengthen more than necessary, despite the fact that some of them are explained
+on the internet in a strange way (as in the case of Huffman). However, anyone
+who wants a somewhat more detailed explanation of the processes can find me &
+ask for it, but I will always do so in my native language (Spanish).
+
+The algorithm used in LZE/BLZ encodings could be further optimized but it has
+not been done for now.
+
+
+RLE Encoding
+--------------------------------------------------------------------------------
+
+RLE command filename [filename [...]]
+
+Command:
+  -d ... decode 'filename'
+  -e ... encode 'filename'
+
+This encoding always leaves the files exactly the same as the original files
+without changing a single bit. It does nothing mysterious.
+
+
+LZSS Encoding
+--------------------------------------------------------------------------------
+
+LZSS command filename [filename [...]]
+
+Command:
+  -d ..... decode 'filename'
+  -evn ... encode 'filename', VRAM compatible, normal mode (LZ10)
+  -ewn ... encode 'filename', WRAM compatible, normal mode
+  -evf ... encode 'filename', VRAM compatible, fast mode
+  -ewf ... encode 'filename', WRAM compatible, fast mode
+  -evo ... encode 'filename', VRAM compatible, optimal mode (LZ-CUE)
+  -ewo ... encode 'filename', WRAM compatible, optimal mode (LZ-CUE)
+
+Encoded files compatible with VRAM don't present any problem if they are decoded
+directly to the video RAM of the console, & are the best option since they work
+in both VRAM & WRAM. A WRAM encoded file may show 'junk' when decoded to VRAM,
+as its data bus is 16-bit & can cause a conflict when trying to read & write to
+a memory address at the same time. Normally, VRAM compatible files are used.
+
+The 'n' option makes the encoded files look exactly the same as the original
+encoded files.
+
+The 'f' option performs encoding by searching binary trees, making the process
+much faster. In theory, files encoded in this way should occupy the same space
+as with the 'n' option, but this is not the case, sometimes occupying a little
+more & other times a little less. It is something pending to look at, although
+it is not important.
+
+The 'o' option is my own version of the encoding 'LZC', using a new algorithm to
+achieve better results at the cost of spending more time.
+
+The reason that the utility maintains all modes is so that the user can see the
+differences between them: How it is done originally (normal), how the same is
+done but much faster (fast) & how it can be encoded in a more optimal way than
+has always been used (optimal).
+
+Whatever form is used when encoding the data, the decoding process is common to
+all of them, & it is recommended to use VRAM support so that there are no
+problems if the data is decoded in video memory.
+
+
+Huffman Encoding
+--------------------------------------------------------------------------------
+
+HUFFMAN command filename [filename [...]]
+
+Command:
+  -d .... decode 'filename'
+  -e8 ... encode 'filename', 8-bits mode
+  -e4 ... encode 'filename', 4-bits mode
+  -e0 ... encode 'filename', best mode
+
+The encoded data always remains identical to the original, but in 8-bit mode the
+code tree may be different (the initial part of the data up to 512 bytes).
+This is due to the reorganization of tree nodes, which is done to avoid certain
+information overlap problems.
+
+The option 'e0' looks for which of the methods is the best, in terms of ratio, &
+chooses it, discarding the other.
+
+The utility is prepared to work with 2-bit & 1-bit encodings, although they have
+only been used as tests, despite the fact that the process used is exactly the
+same, without having to modify anything.
+
+
+LZX Encoding
+--------------------------------------------------------------------------------
+
+LZX command filename [filename [...]]
+
+Command:
+  -d ..... decode 'filename'
+  -evb ... encode 'filename', VRAM compatible, big endian mode (LZ11)
+  -ewb ... encode 'filename', WRAM compatbile, big endian mode
+  -evl ... encode 'filename', VRAM compatible, low endian mode
+  -ewl ... encode 'filename', WRAM compatbile, low endian mode (LZ40)
+
+The big-endian mode is also known as 'ONZ' or 'LZ11' & the low-endian mode as
+'LZ40', due to the extension/header it presents in its data, although it is only
+an improvement of an encoding used by Nintendo on other consoles & is known as
+'Yaz0', intended for large repetitions of data strings within the same file.
+
+Some DS games, like 'Ace Attorney Investigations - Miles Edgeworth', use the
+VRAM-compliant big-endian form, & others, like 'Golden Sun - Dark Dawn', use the
+WRAM-compliant low-endian form. Because of this, the utility allows you to
+choose the type of compatibility.
+
+VRAM-compliant big-endian files are identical to the originals, & WRAM-compliant
+low-endian files have some differences in offsets that indicate compression,
+with the rest being identical.
+
+
+LZE Encoding
+--------------------------------------------------------------------------------
+
+LZE command filename [filename [...]]
+
+Command:
+  -d ... decode 'filename'
+  -e ... encode 'filename'
+
+This encoding uses two different types of LZSS, with 8 or 16 bits to indicate
+the data that is compressed, using the best at all times.
+
+This encoding usually leaves the files somewhat smaller than the original ones,
+& is another thing to watch to try to make it stay the same.
+
+This is the encoding used in DS 'Luminous Arc 2-3' games.
+
+
+BLZ Encoding
+--------------------------------------------------------------------------------
+
+BLZ command filename [filename [...]]
+
+Command:
+  -d ....... decode 'filename'
+  -en[9] ... encode 'filename', normal mode
+  -eo[9] ... encode 'filename', optimal mode (LZ-CUE)
+
+This is the encoding that is used with DS overlays & in some games like
+'RPG Maker DS'. Its main feature is that it can have an unencoded part before
+the encoded part, which is a normal LZ file that starts from the end of the file
+at the beginning.
+
+This encoding usually leaves the files somewhat smaller than the original ones,
+being something else to watch to try to make it stay the same.
+
+
+--------------------------------------------------------------------------------
+Encoders for Nintendo GBA/DS consoles                 11-Nov-2011   (c) CUE 2011
+--------------------------------------------------------------------------------

@@ -36,7 +36,7 @@ decodificación coincide con el que se usa normalmente, incluido el que se usa en
 la BIOS de la consola, por lo que se puede usar sin ningún tipo de problema.
 
 La razón de hacer públicas estas utilidades es porque actualmente no hay ninguna
-que realice algunas codificaciones correctamente, como pasa con Hufmman, la LZ40
+que realice algunas codificaciones correctamente, como pasa con Huffman, la LZ40
 o la BLZ. Y eso que hay consolas, como la GBA, que salieron al mercado en 2001 y
 usan Huffman. Con estas utilidades ya no habrá ningún problema en usar datos que
 se hayan modificado y usen alguna de esas codificaciones.
@@ -71,7 +71,7 @@ explicado por la red de forma extraña (como en el caso de Huffman). No obstante,
 quien quiera una explicación algo más detallada de los procesos puede buscarme y
 pedirla, pero lo haré siempre en mi lengua nativa.
 
-Se podría optimizar un poco más el algoritmo usado en las codificaciones LZE/RLZ
+Se podría optimizar un poco más el algoritmo usado en las codificaciones LZE/BLZ
 pero no se ha hecho por ahora.
 
 
@@ -150,7 +150,7 @@ hace para evitar ciertos problemas de solapamiento de información.
 La opción 'e0' busca cual de los métodos es el mejor, en términos de ratio, y lo
 elige, descartando el otro.
 
-La utilidad está preparada para trabajar con codificaciones de 2-bis y 1-bit, si
+La utilidad está preparada para trabajar con codificaciones de 2-bit y 1-bit, si
 bien sólo se han usado como test, a pesar de que el proceso usado es exactamente
 el mismo, sin tener que modificar nada.
 
