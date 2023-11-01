@@ -21,6 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _MSC_VER
+#define strcasecmp _stricmp
+#endif
+
 /*----------------------------------------------------------------------------*/
 #define CMD_DECODE    0x00       // decode
 #define CMD_CODE_10   0x10       // LZSS magic number
@@ -89,13 +93,13 @@ int main(int argc, char **argv) {
   Title();
 
   if (argc < 2) Usage();
-  if      (!strcmpi(argv[1], "-d"))   { cmd = CMD_DECODE; }
-  else if (!strcmpi(argv[1], "-evn")) { cmd = CMD_CODE_10; mode = LZS_VRAM; }
-  else if (!strcmpi(argv[1], "-ewn")) { cmd = CMD_CODE_10; mode = LZS_WRAM; }
-  else if (!strcmpi(argv[1], "-evf")) { cmd = CMD_CODE_10; mode = LZS_VFAST; }
-  else if (!strcmpi(argv[1], "-ewf")) { cmd = CMD_CODE_10; mode = LZS_WFAST; }
-  else if (!strcmpi(argv[1], "-evo")) { cmd = CMD_CODE_10; mode = LZS_VBEST; }
-  else if (!strcmpi(argv[1], "-ewo")) { cmd = CMD_CODE_10; mode = LZS_WBEST; }
+  if      (!strcasecmp(argv[1], "-d"))   { cmd = CMD_DECODE; }
+  else if (!strcasecmp(argv[1], "-evn")) { cmd = CMD_CODE_10; mode = LZS_VRAM; }
+  else if (!strcasecmp(argv[1], "-ewn")) { cmd = CMD_CODE_10; mode = LZS_WRAM; }
+  else if (!strcasecmp(argv[1], "-evf")) { cmd = CMD_CODE_10; mode = LZS_VFAST; }
+  else if (!strcasecmp(argv[1], "-ewf")) { cmd = CMD_CODE_10; mode = LZS_WFAST; }
+  else if (!strcasecmp(argv[1], "-evo")) { cmd = CMD_CODE_10; mode = LZS_VBEST; }
+  else if (!strcasecmp(argv[1], "-ewo")) { cmd = CMD_CODE_10; mode = LZS_WBEST; }
   else                                  EXIT("Command not supported\n");
   if (argc < 3) EXIT("Filename not specified\n");
 
@@ -151,7 +155,9 @@ char *Load(char *filename, int *length, int min, int max) {
   char *fb;
 
   if ((fp = fopen(filename, "rb")) == NULL) EXIT("\nFile open error\n");
-  fs = filelength(fileno(fp));
+  fseek(fp, 0, SEEK_END);
+  fs = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
   if ((fs < min) || (fs > max)) EXIT("\nFile size error\n");
   fb = Memory(fs + 3, sizeof(char));
   if (fread(fb, 1, fs, fp) != fs) EXIT("\nFile read error\n");

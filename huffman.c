@@ -21,6 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _MSC_VER
+#define strcasecmp _stricmp
+#endif
+
 /*----------------------------------------------------------------------------*/
 //#define _CUE_LOG_                // enable log mode (for test purposes)
 //#define _CUE_MODES_21_22_        // enable modes 0x21-0x22 (for test purposes)
@@ -114,14 +118,14 @@ int main(int argc, char **argv) {
   Title();
 
   if (argc < 2) Usage();
-  if      (!strcmpi(argv[1], "-d"))  cmd = CMD_DECODE;
-  else if (!strcmpi(argv[1], "-e8")) cmd = CMD_CODE_28;
-  else if (!strcmpi(argv[1], "-e4")) cmd = CMD_CODE_24;
+  if      (!strcasecmp(argv[1], "-d"))  cmd = CMD_DECODE;
+  else if (!strcasecmp(argv[1], "-e8")) cmd = CMD_CODE_28;
+  else if (!strcasecmp(argv[1], "-e4")) cmd = CMD_CODE_24;
 #ifdef _CUE_MODES_21_22_
-  else if (!strcmpi(argv[1], "-e2")) cmd = CMD_CODE_22;
-  else if (!strcmpi(argv[1], "-e1")) cmd = CMD_CODE_21;
+  else if (!strcasecmp(argv[1], "-e2")) cmd = CMD_CODE_22;
+  else if (!strcasecmp(argv[1], "-e1")) cmd = CMD_CODE_21;
 #endif
-  else if (!strcmpi(argv[1], "-e0")) cmd = CMD_CODE_20;
+  else if (!strcasecmp(argv[1], "-e0")) cmd = CMD_CODE_20;
   else                               EXIT("Command not supported\n");
   if (argc < 3) EXIT("Filename not specified\n");
 
@@ -187,7 +191,9 @@ char *Load(char *filename, int *length, int min, int max) {
   char *fb;
 
   if ((fp = fopen(filename, "rb")) == NULL) EXIT("\nFile open error\n");
-  fs = filelength(fileno(fp));
+  fseek(fp, 0, SEEK_END);
+  fs = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
   if ((fs < min) || (fs > max)) EXIT("\nFile size error\n");
   fb = Memory(fs + 3, sizeof(char));
   if (fread(fb, 1, fs, fp) != fs) EXIT("\nFile read error\n");
@@ -674,14 +680,14 @@ void HUF_CreateCodeTree(void) {
       for (k = 0; k < 3; k++) jl[k] = tbl[j][k+0x13]; jl[k] = 0;
       for (k = 0; k < 3; k++) jr[k] = tbl[j][k+0x1A]; jr[k] = 0;
 
-      if ((!strcmpi(is, jl) && (tbl[j][0x10] == 'L')) ||
-          (!strcmpi(is, jr) && (tbl[j][0x17] == 'L'))) {
+      if ((!strcasecmp(is, jl) && (tbl[j][0x10] == 'L')) ||
+          (!strcasecmp(is, jr) && (tbl[j][0x17] == 'L'))) {
         tbl[i][0x06] = 's';
         for (k = 0; k < 6; k++) tbl[i][k+0x10] = '-';
       }
 
-      if ((!strcmpi(is, jl) && (tbl[j][0x11] == 'R')) ||
-          (!strcmpi(is, jr) && (tbl[j][0x18] == 'R'))) {
+      if ((!strcasecmp(is, jl) && (tbl[j][0x11] == 'R')) ||
+          (!strcasecmp(is, jr) && (tbl[j][0x18] == 'R'))) {
         tbl[i][0x0B] = 's';
         for (k = 0; k < 6; k++) tbl[i][k+0x17] = '-';
       }
