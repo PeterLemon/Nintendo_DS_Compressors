@@ -118,7 +118,7 @@ char *Load(char *filename, int *length, int min, int max)
 
     *length = fs;
 
-    return (fb);
+    return fb;
 }
 
 void Save(char *filename, char *buffer, int length)
@@ -319,7 +319,7 @@ char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd)
 
     *new_len = pak - pak_buffer;
 
-    return (pak_buffer);
+    return pak_buffer;
 }
 
 void LZX_Decode(char *filename)
@@ -546,5 +546,5 @@ int main(int argc, char **argv)
 
     printf("\nDone\n");
 
-    return (0);
+    return 0;
 }

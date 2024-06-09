@@ -83,9 +83,9 @@ void Usage(void)
          "* this codification is used in the DS overlay files\n");
 }
 
-char *Memory(int length, int size)
+void *Memory(size_t length, size_t size)
 {
-    char *fb = (char *)calloc(length, size);
+    void *fb = calloc(length, size);
     if (fb == NULL)
         EXIT("\nMemory error\n");
 
@@ -113,14 +113,14 @@ char *Load(char *filename, int *length, int min, int max)
 
     *length = fs;
 
-    return (fb);
+    return fb;
 }
 
-void Save(char *filename, char *buffer, int length)
+void Save(char *filename, void *buffer, size_t length)
 {
-    FILE *fp;
+    FILE *fp = fopen(filename, "wb");
 
-    if ((fp = fopen(filename, "wb")) == NULL)
+    if (fp == NULL)
         EXIT("\nFile create error\n");
     if (fwrite(buffer, 1, length, fp) != length)
         EXIT("\nFile write error\n");
@@ -163,7 +163,7 @@ short BLZ_CRC16(unsigned char *buffer, unsigned int length)
         }
     }
 
-    return (crc);
+    return crc;
 }
 
 char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best)
@@ -205,7 +205,7 @@ char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best)
     raw_tmp = raw_len;
 
     pak_len = raw_len + ((raw_len + 7) / 8) + 11;
-    pak_buffer = (unsigned char *)Memory(pak_len, sizeof(char));
+    pak_buffer = Memory(pak_len, sizeof(char));
 
     raw_new = raw_len;
     if (arm9)
@@ -334,7 +334,7 @@ char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best)
     }
     else
     {
-        tmp = (unsigned char *)Memory(raw_tmp + pak_tmp + 11, sizeof(char));
+        tmp = Memory(raw_tmp + pak_tmp + 11, sizeof(char));
 
         for (len = 0; len < raw_tmp; len++)
             tmp[len] = raw_buffer[len];
@@ -368,7 +368,7 @@ char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best)
 
     *new_len = pak - pak_buffer;
 
-    return (pak_buffer);
+    return pak_buffer;
 }
 
 void BLZ_Decode(char *filename)
@@ -407,7 +407,7 @@ void BLZ_Decode(char *filename)
             EXIT("\nBad decoded length\n");
     }
 
-    raw_buffer = (unsigned char *)Memory(raw_len, sizeof(char));
+    raw_buffer = Memory(raw_len, sizeof(char));
 
     pak = pak_buffer;
     raw = raw_buffer;
@@ -419,6 +419,7 @@ void BLZ_Decode(char *filename)
 
     BLZ_Invert(pak_buffer + dec_len, pak_len);
 
+    flags = 0;
     mask = 0;
 
     while (raw < raw_end)
@@ -554,5 +555,5 @@ int main(int argc, char **argv)
 
     printf("\nDone\n");
 
-    return (0);
+    return 0;
 }

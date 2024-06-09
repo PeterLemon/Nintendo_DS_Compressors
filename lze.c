@@ -109,7 +109,7 @@ char *Load(char *filename, int *length, int min, int max)
 
     *length = fs;
 
-    return (fb);
+    return fb;
 }
 
 void Save(char *filename, char *buffer, int length)
@@ -267,7 +267,7 @@ char *LZE_Code(unsigned char *raw_buffer, int raw_len, int *new_len)
 
     *new_len = pak - pak_buffer;
 
-    return (pak_buffer);
+    return pak_buffer;
 }
 
 void LZE_Decode(char *filename)
@@ -439,5 +439,5 @@ int main(int argc, char **argv)
 
     printf("\nDone\n");
 
-    return (0);
+    return 0;
 }

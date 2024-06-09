@@ -130,11 +130,11 @@ void *Memory(size_t length, size_t size)
 
 unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
 {
-    FILE *fp;
     size_t fs;
     unsigned char *fb;
+    FILE *fp = fopen(filename, "rb");
 
-    if ((fp = fopen(filename, "rb")) == NULL)
+    if (fp == NULL)
         EXIT("\nFile open error\n");
     fseek(fp, 0, SEEK_END);
     fs = ftell(fp);
@@ -149,14 +149,14 @@ unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
 
     *length = fs;
 
-    return (fb);
+    return fb;
 }
 
 void Save(char *filename, unsigned char *buffer, size_t length)
 {
-    FILE *fp;
+    FILE *fp = fopen(filename, "wb");
 
-    if ((fp = fopen(filename, "wb")) == NULL)
+    if (fp == NULL)
         EXIT("\nFile create error\n");
     if (fwrite(buffer, 1, length, fp) != length)
         EXIT("\nFile write error\n");
@@ -166,11 +166,9 @@ void Save(char *filename, unsigned char *buffer, size_t length)
 
 void HUF_InitFreqs(void)
 {
-    unsigned int i;
-
     freqs = Memory(max_symbols, sizeof(int));
 
-    for (i = 0; i < max_symbols; i++)
+    for (unsigned int i = 0; i < max_symbols; i++)
         freqs[i] = 0;
 }
 
@@ -243,11 +241,9 @@ void HUF_FreeFreqs(void)
 
 void HUF_InitTree(void)
 {
-    unsigned int i;
+    tree = Memory(num_nodes, sizeof(huffman_node *));
 
-    tree = (huffman_node **)Memory(num_nodes, sizeof(huffman_node *));
-
-    for (i = 0; i < num_nodes; i++)
+    for (unsigned int i = 0; i < num_nodes; i++)
         tree[i] = NULL;
 }
 
@@ -348,24 +344,20 @@ void HUF_CreateTree(void)
 
 void HUF_FreeTree(void)
 {
-    unsigned int i;
-
-    for (i = 0; i < num_nodes; i++)
+    for (unsigned int i = 0; i < num_nodes; i++)
         free(tree[i]);
+
     free(tree);
 }
 
 void HUF_InitCodeTree(void)
 {
-    unsigned int max_nodes;
-    unsigned int i;
-
-    max_nodes = (((num_leafs - 1) | 1) + 1) << 1;
+    unsigned int max_nodes = (((num_leafs - 1) | 1) + 1) << 1;
 
     codetree = Memory(max_nodes, sizeof(char));
     codemask = Memory(max_nodes, sizeof(char));
 
-    for (i = 0; i < max_nodes; i++)
+    for (unsigned int i = 0; i < max_nodes; i++)
     {
         codetree[i] = 0;
         codemask[i] = 0;
@@ -451,7 +443,7 @@ int HUF_CreateCodeBranch(huffman_node *root, unsigned int p, unsigned int q)
         }
     }
 
-    return (root->leafs);
+    return root->leafs;
 }
 
 void HUF_UpdateCodeTree(void)
@@ -530,9 +522,7 @@ void HUF_UpdateCodeTree(void)
 
 void HUF_CreateCodeTree(void)
 {
-    unsigned int i;
-
-    i = 0;
+    unsigned int i = 0;
 
     codetree[i] = (num_leafs - 1) | 1;
     codemask[i] = 0;
@@ -630,11 +620,9 @@ void HUF_FreeCodeTree(void)
 
 void HUF_InitCodeWorks(void)
 {
-    unsigned int i;
+    codes = Memory(max_symbols, sizeof(huffman_code *));
 
-    codes = (huffman_code **)Memory(max_symbols, sizeof(huffman_code *));
-
-    for (i = 0; i < max_symbols; i++)
+    for (unsigned int i = 0; i < max_symbols; i++)
         codes[i] = NULL;
 }
 
@@ -706,9 +694,7 @@ void HUF_CreateCodeWorks(void)
 
 void HUF_FreeCodeWorks(void)
 {
-    unsigned int i;
-
-    for (i = 0; i < max_symbols; i++)
+    for (unsigned int i = 0; i < max_symbols; i++)
     {
         if (codes[i] != NULL)
         {
@@ -825,7 +811,7 @@ unsigned char *HUF_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
 
     *new_len = pak_len;
 
-    return (pak_buffer);
+    return pak_buffer;
 }
 
 void HUF_Decode(char *filename)
@@ -1035,5 +1021,5 @@ int main(int argc, char **argv)
 
     printf("\nDone\n");
 
-    return (0);
+    return 0;
 }

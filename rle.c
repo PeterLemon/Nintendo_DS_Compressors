@@ -173,7 +173,7 @@ unsigned char *RLE_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
 
     *new_len = pak - pak_buffer;
 
-    return (pak_buffer);
+    return pak_buffer;
 }
 
 void RLE_Decode(char *filename)

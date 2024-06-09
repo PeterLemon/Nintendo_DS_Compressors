@@ -103,7 +103,7 @@ void *Memory(size_t length, size_t size)
     if (fb == NULL)
         EXIT("\nMemory error\n");
 
-    return (fb);
+    return fb;
 }
 
 unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
@@ -127,7 +127,7 @@ unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
 
     *length = fs;
 
-    return (fb);
+    return fb;
 }
 
 void Save(char *filename, unsigned char *buffer, size_t length)
@@ -351,7 +351,7 @@ unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
 
     *new_len = pak - pak_buffer;
 
-    return (pak_buffer);
+    return pak_buffer;
 }
 
 unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_len)
@@ -434,7 +434,7 @@ unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
 
     *new_len = pak - pak_buffer;
 
-    return (pak_buffer);
+    return pak_buffer;
 }
 
 void LZS_InitTree(void)
