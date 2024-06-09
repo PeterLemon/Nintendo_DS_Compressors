@@ -16,7 +16,6 @@
 /*--  along with this program. If not, see <http://www.gnu.org/licenses/>.  --*/
 /*----------------------------------------------------------------------------*/
 
-/*----------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +26,6 @@
 #include <strings.h>
 #endif
 
-/*----------------------------------------------------------------------------*/
 #define CMD_DECODE  0x00 // decode
 #define CMD_CODE_30 0x30 // RLE magic number
 
@@ -52,65 +50,12 @@
                // * flags, (RAW_MAXIM + RLE_N - 1) / RLE_N
                // 4 + 0x00FFFFFF + 0x00020000 + padding
 
-/*----------------------------------------------------------------------------*/
-
 #define EXIT(text)    \
     {                 \
         printf(text); \
         exit(-1);     \
     }
 
-/*----------------------------------------------------------------------------*/
-void Title(void);
-void Usage(void);
-
-unsigned char *Load(char *filename, size_t *length, size_t min, size_t max);
-void Save(char *filename, unsigned char *buffer, size_t length);
-void *Memory(size_t length, size_t size);
-
-void RLE_Decode(char *filename);
-void RLE_Encode(char *filename);
-unsigned char *RLE_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len);
-
-/*----------------------------------------------------------------------------*/
-int main(int argc, char **argv)
-{
-    int cmd;
-    int arg;
-
-    Title();
-
-    if (argc < 2)
-        Usage();
-    if (!strcasecmp(argv[1], "-d"))
-        cmd = CMD_DECODE;
-    else if (!strcasecmp(argv[1], "-e"))
-        cmd = CMD_CODE_30;
-    else
-        EXIT("Command not supported\n");
-    if (argc < 3)
-        EXIT("Filename not specified\n");
-
-    switch (cmd)
-    {
-        case CMD_DECODE:
-            for (arg = 2; arg < argc; arg++)
-                RLE_Decode(argv[arg]);
-            break;
-        case CMD_CODE_30:
-            for (arg = 2; arg < argc; arg++)
-                RLE_Encode(argv[arg]);
-            break;
-        default:
-            break;
-    }
-
-    printf("\nDone\n");
-
-    return (0);
-}
-
-/*----------------------------------------------------------------------------*/
 void Title(void)
 {
     printf("\n"
@@ -119,7 +64,6 @@ void Title(void)
            "\n");
 }
 
-/*----------------------------------------------------------------------------*/
 void Usage(void)
 {
     EXIT("Usage: RLE command filename [filename [...]]\n"
@@ -132,7 +76,15 @@ void Usage(void)
          "* the original file is overwritten with the new file\n");
 }
 
-/*----------------------------------------------------------------------------*/
+void *Memory(size_t length, size_t size)
+{
+    unsigned char *fb = calloc(length, size);
+    if (fb == NULL)
+        EXIT("\nMemory error\n");
+
+    return fb;
+}
+
 unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
 {
     size_t fs;
@@ -157,7 +109,6 @@ unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
     return fb;
 }
 
-/*----------------------------------------------------------------------------*/
 void Save(char *filename, unsigned char *buffer, size_t length)
 {
     FILE *fp = fopen(filename, "wb");
@@ -170,19 +121,61 @@ void Save(char *filename, unsigned char *buffer, size_t length)
         EXIT("\nFile close error\n");
 }
 
-/*----------------------------------------------------------------------------*/
-void *Memory(size_t length, size_t size)
+unsigned char *RLE_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len)
 {
-    unsigned char *fb;
+    unsigned char *pak_buffer, *pak, *raw, *raw_end, store[RLE_N];
+    unsigned int pak_len, len, store_len, count;
 
-    fb = calloc(length, size);
-    if (fb == NULL)
-        EXIT("\nMemory error\n");
+    pak_len = 4 + raw_len + ((raw_len + RLE_N - 1) / RLE_N);
+    pak_buffer = Memory(pak_len, sizeof(char));
 
-    return (fb);
+    *(unsigned int *)pak_buffer = CMD_CODE_30 | (raw_len << 8);
+
+    pak = pak_buffer + 4;
+    raw = raw_buffer;
+    raw_end = raw_buffer + raw_len;
+
+    store_len = 0;
+    while (raw < raw_end)
+    {
+        for (len = 1; len < RLE_F; len++)
+        {
+            if (raw + len == raw_end)
+                break;
+            if (*(raw + len) != *raw)
+                break;
+        }
+
+        if (len <= RLE_THRESHOLD)
+            store[store_len++] = *raw++;
+
+        if ((store_len == RLE_N) || (store_len && (len > RLE_THRESHOLD)))
+        {
+            *pak++ = store_len - 1;
+            for (count = 0; count < store_len; count++)
+                *pak++ = store[count];
+            store_len = 0;
+        }
+
+        if (len > RLE_THRESHOLD)
+        {
+            *pak++ = RLE_MASK | (len - (RLE_THRESHOLD + 1));
+            *pak++ = *raw;
+            raw += len;
+        }
+    }
+    if (store_len)
+    {
+        *pak++ = store_len - 1;
+        for (count = 0; count < store_len; count++)
+            *pak++ = store[count];
+    }
+
+    *new_len = pak - pak_buffer;
+
+    return (pak_buffer);
 }
 
-/*----------------------------------------------------------------------------*/
 void RLE_Decode(char *filename)
 {
     unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
@@ -258,7 +251,6 @@ void RLE_Decode(char *filename)
     printf("\n");
 }
 
-/*----------------------------------------------------------------------------*/
 void RLE_Encode(char *filename)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
@@ -288,62 +280,39 @@ void RLE_Encode(char *filename)
     printf("\n");
 }
 
-/*----------------------------------------------------------------------------*/
-unsigned char *RLE_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len)
+int main(int argc, char **argv)
 {
-    unsigned char *pak_buffer, *pak, *raw, *raw_end, store[RLE_N];
-    unsigned int pak_len, len, store_len, count;
+    int cmd;
+    int arg;
 
-    pak_len = 4 + raw_len + ((raw_len + RLE_N - 1) / RLE_N);
-    pak_buffer = Memory(pak_len, sizeof(char));
+    Title();
 
-    *(unsigned int *)pak_buffer = CMD_CODE_30 | (raw_len << 8);
+    if (argc < 2)
+        Usage();
+    if (!strcasecmp(argv[1], "-d"))
+        cmd = CMD_DECODE;
+    else if (!strcasecmp(argv[1], "-e"))
+        cmd = CMD_CODE_30;
+    else
+        EXIT("Command not supported\n");
+    if (argc < 3)
+        EXIT("Filename not specified\n");
 
-    pak = pak_buffer + 4;
-    raw = raw_buffer;
-    raw_end = raw_buffer + raw_len;
-
-    store_len = 0;
-    while (raw < raw_end)
+    switch (cmd)
     {
-        for (len = 1; len < RLE_F; len++)
-        {
-            if (raw + len == raw_end)
-                break;
-            if (*(raw + len) != *raw)
-                break;
-        }
-
-        if (len <= RLE_THRESHOLD)
-            store[store_len++] = *raw++;
-
-        if ((store_len == RLE_N) || (store_len && (len > RLE_THRESHOLD)))
-        {
-            *pak++ = store_len - 1;
-            for (count = 0; count < store_len; count++)
-                *pak++ = store[count];
-            store_len = 0;
-        }
-
-        if (len > RLE_THRESHOLD)
-        {
-            *pak++ = RLE_MASK | (len - (RLE_THRESHOLD + 1));
-            *pak++ = *raw;
-            raw += len;
-        }
-    }
-    if (store_len)
-    {
-        *pak++ = store_len - 1;
-        for (count = 0; count < store_len; count++)
-            *pak++ = store[count];
+        case CMD_DECODE:
+            for (arg = 2; arg < argc; arg++)
+                RLE_Decode(argv[arg]);
+            break;
+        case CMD_CODE_30:
+            for (arg = 2; arg < argc; arg++)
+                RLE_Encode(argv[arg]);
+            break;
+        default:
+            break;
     }
 
-    *new_len = pak - pak_buffer;
+    printf("\nDone\n");
 
-    return (pak_buffer);
+    return 0;
 }
-
-/*----------------------------------------------------------------------------*/
-/*--  EOF                                           Copyright (C) 2011 CUE  --*/
-/*----------------------------------------------------------------------------*/

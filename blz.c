@@ -16,7 +16,6 @@
 /*--  along with this program. If not, see <http://www.gnu.org/licenses/>.  --*/
 /*----------------------------------------------------------------------------*/
 
-/*----------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +26,6 @@
 #include <strings.h>
 #endif
 
-/*----------------------------------------------------------------------------*/
 #define CMD_DECODE 0x00 // decode
 #define CMD_ENCODE 0x01 // encode
 
@@ -54,10 +52,7 @@
                // * header, 11
                // 0x00FFFFFF + 0x00200000 + 12 + padding
 
-/*----------------------------------------------------------------------------*/
 unsigned int arm9;
-
-/*----------------------------------------------------------------------------*/
 
 #define EXIT(text)    \
     {                 \
@@ -65,80 +60,6 @@ unsigned int arm9;
         exit(-1);     \
     }
 
-/*----------------------------------------------------------------------------*/
-void Title(void);
-void Usage(void);
-
-char *Load(char *filename, int *length, int min, int max);
-void Save(char *filename, char *buffer, int length);
-char *Memory(int length, int size);
-
-void BLZ_Decode(char *filename);
-void BLZ_Encode(char *filename, int mode);
-char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best);
-void BLZ_Invert(char *buffer, int length);
-short BLZ_CRC16(unsigned char *buffer, unsigned int length);
-
-/*----------------------------------------------------------------------------*/
-int main(int argc, char **argv)
-{
-    int cmd, mode;
-    int arg;
-
-    Title();
-
-    if (argc < 2)
-        Usage();
-    if (!strcasecmp(argv[1], "-d"))
-    {
-        cmd = CMD_DECODE;
-    }
-    else if (!strcasecmp(argv[1], "-en"))
-    {
-        cmd = CMD_ENCODE;
-        mode = BLZ_NORMAL;
-    }
-    else if (!strcasecmp(argv[1], "-eo"))
-    {
-        cmd = CMD_ENCODE;
-        mode = BLZ_BEST;
-    }
-    else if (!strcasecmp(argv[1], "-en9"))
-    {
-        cmd = CMD_ENCODE;
-        mode = BLZ_NORMAL;
-    }
-    else if (!strcasecmp(argv[1], "-eo9"))
-    {
-        cmd = CMD_ENCODE;
-        mode = BLZ_BEST;
-    }
-    else
-        EXIT("Command not supported\n");
-    if (argc < 3)
-        EXIT("Filename not specified\n");
-
-    switch (cmd)
-    {
-        case CMD_DECODE:
-            for (arg = 2; arg < argc; arg++)
-                BLZ_Decode(argv[arg]);
-            break;
-        case CMD_ENCODE:
-            arm9 = argv[1][3] == '9' ? 1 : 0;
-            for (arg = 2; arg < argc; arg++)
-                BLZ_Encode(argv[arg], mode);
-            break;
-        default:
-            break;
-    }
-
-    printf("\nDone\n");
-
-    return (0);
-}
-
-/*----------------------------------------------------------------------------*/
 void Title(void)
 {
     printf("\n"
@@ -147,7 +68,6 @@ void Title(void)
            "\n");
 }
 
-/*----------------------------------------------------------------------------*/
 void Usage(void)
 {
     EXIT("Usage: BLZ command filename [filename [...]]\n"
@@ -163,7 +83,15 @@ void Usage(void)
          "* this codification is used in the DS overlay files\n");
 }
 
-/*----------------------------------------------------------------------------*/
+char *Memory(int length, int size)
+{
+    char *fb = (char *)calloc(length, size);
+    if (fb == NULL)
+        EXIT("\nMemory error\n");
+
+    return fb;
+}
+
 char *Load(char *filename, int *length, int min, int max)
 {
     FILE *fp;
@@ -188,7 +116,6 @@ char *Load(char *filename, int *length, int min, int max)
     return (fb);
 }
 
-/*----------------------------------------------------------------------------*/
 void Save(char *filename, char *buffer, int length)
 {
     FILE *fp;
@@ -201,149 +128,44 @@ void Save(char *filename, char *buffer, int length)
         EXIT("\nFile close error\n");
 }
 
-/*----------------------------------------------------------------------------*/
-char *Memory(int length, int size)
+void BLZ_Invert(char *buffer, int length)
 {
-    char *fb;
+    char *bottom, ch;
 
-    fb = (char *)calloc(length, size);
-    if (fb == NULL)
-        EXIT("\nMemory error\n");
+    bottom = buffer + length - 1;
 
-    return (fb);
+    while (buffer < bottom)
+    {
+        ch = *buffer;
+        *buffer++ = *bottom;
+        *bottom-- = ch;
+    }
 }
 
-/*----------------------------------------------------------------------------*/
-void BLZ_Decode(char *filename)
+short BLZ_CRC16(unsigned char *buffer, unsigned int length)
 {
-    unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
-    unsigned int pak_len, raw_len, len, pos, inc_len, hdr_len, enc_len, dec_len;
-    unsigned char flags, mask;
+    unsigned short crc;
+    unsigned int nbits;
 
-    printf("- decoding '%s'", filename);
-
-    pak_buffer = Load(filename, &pak_len, BLZ_MINIM, BLZ_MAXIM);
-
-    inc_len = *(unsigned int *)(pak_buffer + pak_len - 4);
-    if (!inc_len)
+    crc = 0xFFFF;
+    while (length--)
     {
-        printf(", WARNING: not coded file!");
-        enc_len = 0;
-        dec_len = pak_len;
-        pak_len = 0;
-        raw_len = dec_len;
-    }
-    else
-    {
-        if (pak_len < 8)
-            EXIT("\nFile has a bad header\n");
-        hdr_len = pak_buffer[pak_len - 5];
-        if ((hdr_len < 0x08) || (hdr_len > 0x0B))
-            EXIT("\nBad header length\n");
-        if (pak_len <= hdr_len)
-            EXIT("\nBad length\n");
-        enc_len = *(unsigned int *)(pak_buffer + pak_len - 8) & 0x00FFFFFF;
-        dec_len = pak_len - enc_len;
-        pak_len = enc_len - hdr_len;
-        raw_len = dec_len + enc_len + inc_len;
-        if (raw_len > RAW_MAXIM)
-            EXIT("\nBad decoded length\n");
-    }
-
-    raw_buffer = (unsigned char *)Memory(raw_len, sizeof(char));
-
-    pak = pak_buffer;
-    raw = raw_buffer;
-    pak_end = pak_buffer + dec_len + pak_len;
-    raw_end = raw_buffer + raw_len;
-
-    for (len = 0; len < dec_len; len++)
-        *raw++ = *pak++;
-
-    BLZ_Invert(pak_buffer + dec_len, pak_len);
-
-    mask = 0;
-
-    while (raw < raw_end)
-    {
-        if (!(mask >>= BLZ_SHIFT))
+        crc ^= *buffer++;
+        nbits = 8;
+        while (nbits--)
         {
-            if (pak == pak_end)
-                break;
-            flags = *pak++;
-            mask = BLZ_MASK;
-        }
-
-        if (!(flags & mask))
-        {
-            if (pak == pak_end)
-                break;
-            *raw++ = *pak++;
-        }
-        else
-        {
-            if (pak + 1 >= pak_end)
-                break;
-            pos = *pak++ << 8;
-            pos |= *pak++;
-            len = (pos >> 12) + BLZ_THRESHOLD + 1;
-            if (raw + len > raw_end)
+            if (crc & 1)
             {
-                printf(", WARNING: wrong decoded length!");
-                len = raw_end - raw;
+                crc = (crc >> 1) ^ 0xA001;
             }
-            pos = (pos & 0xFFF) + 3;
-            while (len--)
-                *raw++ = *(raw - pos);
+            else
+                crc = crc >> 1;
         }
     }
 
-    BLZ_Invert(raw_buffer + dec_len, raw_len - dec_len);
-
-    raw_len = raw - raw_buffer;
-
-    if (raw != raw_end)
-        printf(", WARNING: unexpected end of encoded file!");
-
-    Save(filename, raw_buffer, raw_len);
-
-    free(raw_buffer);
-    free(pak_buffer);
-
-    printf("\n");
+    return (crc);
 }
 
-/*----------------------------------------------------------------------------*/
-void BLZ_Encode(char *filename, int mode)
-{
-    unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-    unsigned int raw_len, pak_len, new_len;
-
-    printf("- encoding '%s'", filename);
-
-    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
-
-    pak_buffer = NULL;
-    pak_len = BLZ_MAXIM + 1;
-
-    new_buffer = BLZ_Code(raw_buffer, raw_len, &new_len, mode);
-    if (new_len < pak_len)
-    {
-        if (pak_buffer != NULL)
-            free(pak_buffer);
-        pak_buffer = new_buffer;
-        pak_len = new_len;
-    }
-
-    Save(filename, pak_buffer, pak_len);
-
-    free(pak_buffer);
-    free(raw_buffer);
-
-    printf("\n");
-}
-
-/*----------------------------------------------------------------------------*/
 char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best)
 {
     unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg, *tmp;
@@ -549,46 +371,188 @@ char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best)
     return (pak_buffer);
 }
 
-/*----------------------------------------------------------------------------*/
-void BLZ_Invert(char *buffer, int length)
+void BLZ_Decode(char *filename)
 {
-    char *bottom, ch;
+    unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
+    unsigned int pak_len, raw_len, len, pos, inc_len, hdr_len, enc_len, dec_len;
+    unsigned char flags, mask;
 
-    bottom = buffer + length - 1;
+    printf("- decoding '%s'", filename);
 
-    while (buffer < bottom)
+    pak_buffer = Load(filename, &pak_len, BLZ_MINIM, BLZ_MAXIM);
+
+    inc_len = *(unsigned int *)(pak_buffer + pak_len - 4);
+    if (!inc_len)
     {
-        ch = *buffer;
-        *buffer++ = *bottom;
-        *bottom-- = ch;
+        printf(", WARNING: not coded file!");
+        enc_len = 0;
+        dec_len = pak_len;
+        pak_len = 0;
+        raw_len = dec_len;
     }
-}
-
-/*----------------------------------------------------------------------------*/
-short BLZ_CRC16(unsigned char *buffer, unsigned int length)
-{
-    unsigned short crc;
-    unsigned int nbits;
-
-    crc = 0xFFFF;
-    while (length--)
+    else
     {
-        crc ^= *buffer++;
-        nbits = 8;
-        while (nbits--)
+        if (pak_len < 8)
+            EXIT("\nFile has a bad header\n");
+        hdr_len = pak_buffer[pak_len - 5];
+        if ((hdr_len < 0x08) || (hdr_len > 0x0B))
+            EXIT("\nBad header length\n");
+        if (pak_len <= hdr_len)
+            EXIT("\nBad length\n");
+        enc_len = *(unsigned int *)(pak_buffer + pak_len - 8) & 0x00FFFFFF;
+        dec_len = pak_len - enc_len;
+        pak_len = enc_len - hdr_len;
+        raw_len = dec_len + enc_len + inc_len;
+        if (raw_len > RAW_MAXIM)
+            EXIT("\nBad decoded length\n");
+    }
+
+    raw_buffer = (unsigned char *)Memory(raw_len, sizeof(char));
+
+    pak = pak_buffer;
+    raw = raw_buffer;
+    pak_end = pak_buffer + dec_len + pak_len;
+    raw_end = raw_buffer + raw_len;
+
+    for (len = 0; len < dec_len; len++)
+        *raw++ = *pak++;
+
+    BLZ_Invert(pak_buffer + dec_len, pak_len);
+
+    mask = 0;
+
+    while (raw < raw_end)
+    {
+        if (!(mask >>= BLZ_SHIFT))
         {
-            if (crc & 1)
+            if (pak == pak_end)
+                break;
+            flags = *pak++;
+            mask = BLZ_MASK;
+        }
+
+        if (!(flags & mask))
+        {
+            if (pak == pak_end)
+                break;
+            *raw++ = *pak++;
+        }
+        else
+        {
+            if (pak + 1 >= pak_end)
+                break;
+            pos = *pak++ << 8;
+            pos |= *pak++;
+            len = (pos >> 12) + BLZ_THRESHOLD + 1;
+            if (raw + len > raw_end)
             {
-                crc = (crc >> 1) ^ 0xA001;
+                printf(", WARNING: wrong decoded length!");
+                len = raw_end - raw;
             }
-            else
-                crc = crc >> 1;
+            pos = (pos & 0xFFF) + 3;
+            while (len--)
+                *raw++ = *(raw - pos);
         }
     }
 
-    return (crc);
+    BLZ_Invert(raw_buffer + dec_len, raw_len - dec_len);
+
+    raw_len = raw - raw_buffer;
+
+    if (raw != raw_end)
+        printf(", WARNING: unexpected end of encoded file!");
+
+    Save(filename, raw_buffer, raw_len);
+
+    free(raw_buffer);
+    free(pak_buffer);
+
+    printf("\n");
 }
 
-/*----------------------------------------------------------------------------*/
-/*--  EOF                                           Copyright (C) 2011 CUE  --*/
-/*----------------------------------------------------------------------------*/
+void BLZ_Encode(char *filename, int mode)
+{
+    unsigned char *raw_buffer, *pak_buffer, *new_buffer;
+    unsigned int raw_len, pak_len, new_len;
+
+    printf("- encoding '%s'", filename);
+
+    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
+
+    pak_buffer = NULL;
+    pak_len = BLZ_MAXIM + 1;
+
+    new_buffer = BLZ_Code(raw_buffer, raw_len, &new_len, mode);
+    if (new_len < pak_len)
+    {
+        if (pak_buffer != NULL)
+            free(pak_buffer);
+        pak_buffer = new_buffer;
+        pak_len = new_len;
+    }
+
+    Save(filename, pak_buffer, pak_len);
+
+    free(pak_buffer);
+    free(raw_buffer);
+
+    printf("\n");
+}
+
+int main(int argc, char **argv)
+{
+    int cmd, mode;
+    int arg;
+
+    Title();
+
+    if (argc < 2)
+        Usage();
+    if (!strcasecmp(argv[1], "-d"))
+    {
+        cmd = CMD_DECODE;
+    }
+    else if (!strcasecmp(argv[1], "-en"))
+    {
+        cmd = CMD_ENCODE;
+        mode = BLZ_NORMAL;
+    }
+    else if (!strcasecmp(argv[1], "-eo"))
+    {
+        cmd = CMD_ENCODE;
+        mode = BLZ_BEST;
+    }
+    else if (!strcasecmp(argv[1], "-en9"))
+    {
+        cmd = CMD_ENCODE;
+        mode = BLZ_NORMAL;
+    }
+    else if (!strcasecmp(argv[1], "-eo9"))
+    {
+        cmd = CMD_ENCODE;
+        mode = BLZ_BEST;
+    }
+    else
+        EXIT("Command not supported\n");
+    if (argc < 3)
+        EXIT("Filename not specified\n");
+
+    switch (cmd)
+    {
+        case CMD_DECODE:
+            for (arg = 2; arg < argc; arg++)
+                BLZ_Decode(argv[arg]);
+            break;
+        case CMD_ENCODE:
+            arm9 = argv[1][3] == '9' ? 1 : 0;
+            for (arg = 2; arg < argc; arg++)
+                BLZ_Encode(argv[arg], mode);
+            break;
+        default:
+            break;
+    }
+
+    printf("\nDone\n");
+
+    return (0);
+}

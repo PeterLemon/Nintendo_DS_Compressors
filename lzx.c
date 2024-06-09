@@ -16,7 +16,6 @@
 /*--  along with this program. If not, see <http://www.gnu.org/licenses/>.  --*/
 /*----------------------------------------------------------------------------*/
 
-/*----------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +26,6 @@
 #include <strings.h>
 #endif
 
-/*----------------------------------------------------------------------------*/
 #define CMD_DECODE  0x00 // decode
 #define CMD_CODE_11 0x11 // LZX big endian magic number
 #define CMD_CODE_40 0x40 // LZX low endian magic number
@@ -58,10 +56,7 @@
                // * 3 (flag + 2 end-bytes)
                // 4 + 0x00FFFFFF + 0x00200000 + 3 + padding
 
-/*----------------------------------------------------------------------------*/
 int lzx_vram;
-
-/*----------------------------------------------------------------------------*/
 
 #define EXIT(text)    \
     {                 \
@@ -69,78 +64,6 @@ int lzx_vram;
         exit(-1);     \
     }
 
-/*----------------------------------------------------------------------------*/
-void Title(void);
-void Usage(void);
-
-char *Load(char *filename, int *length, int min, int max);
-void Save(char *filename, char *buffer, int length);
-char *Memory(int length, int size);
-
-void LZX_Decode(char *filename);
-void LZX_Encode(char *filename, int cmd, int vram);
-char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd);
-
-/*----------------------------------------------------------------------------*/
-int main(int argc, char **argv)
-{
-    int cmd, vram;
-    int arg;
-
-    Title();
-
-    if (argc < 2)
-        Usage();
-    if (!strcasecmp(argv[1], "-d"))
-    {
-        cmd = CMD_DECODE;
-    }
-    else if (!strcasecmp(argv[1], "-evb"))
-    {
-        cmd = CMD_CODE_11;
-        vram = LZX_VRAM;
-    }
-    else if (!strcasecmp(argv[1], "-ewb"))
-    {
-        cmd = CMD_CODE_11;
-        vram = LZX_WRAM;
-    }
-    else if (!strcasecmp(argv[1], "-evl"))
-    {
-        cmd = CMD_CODE_40;
-        vram = LZX_VRAM;
-    }
-    else if (!strcasecmp(argv[1], "-ewl"))
-    {
-        cmd = CMD_CODE_40;
-        vram = LZX_WRAM;
-    }
-    else
-        EXIT("Command not supported\n");
-    if (argc < 3)
-        EXIT("Filename not specified\n");
-
-    switch (cmd)
-    {
-        case CMD_DECODE:
-            for (arg = 2; arg < argc; arg++)
-                LZX_Decode(argv[arg]);
-            break;
-        case CMD_CODE_11:
-        case CMD_CODE_40:
-            for (arg = 2; arg < argc; arg++)
-                LZX_Encode(argv[arg], cmd, vram);
-            break;
-        default:
-            break;
-    }
-
-    printf("\nDone\n");
-
-    return (0);
-}
-
-/*----------------------------------------------------------------------------*/
 void Title(void)
 {
     printf("\n"
@@ -149,7 +72,6 @@ void Title(void)
            "\n");
 }
 
-/*----------------------------------------------------------------------------*/
 void Usage(void)
 {
     EXIT("Usage: LZX command filename [filename [...]]\n"
@@ -166,7 +88,15 @@ void Usage(void)
          "* this codification is an updated version of the 'Yaz0' compression\n");
 }
 
-/*----------------------------------------------------------------------------*/
+char *Memory(int length, int size)
+{
+    char *fb = calloc(length, size);
+    if (fb == NULL)
+        EXIT("\nMemory error\n");
+
+    return fb;
+}
+
 char *Load(char *filename, int *length, int min, int max)
 {
     FILE *fp;
@@ -191,7 +121,6 @@ char *Load(char *filename, int *length, int min, int max)
     return (fb);
 }
 
-/*----------------------------------------------------------------------------*/
 void Save(char *filename, char *buffer, int length)
 {
     FILE *fp;
@@ -204,190 +133,6 @@ void Save(char *filename, char *buffer, int length)
         EXIT("\nFile close error\n");
 }
 
-/*----------------------------------------------------------------------------*/
-char *Memory(int length, int size)
-{
-    char *fb;
-
-    fb = (char *)calloc(length, size);
-    if (fb == NULL)
-        EXIT("\nMemory error\n");
-
-    return (fb);
-}
-
-/*----------------------------------------------------------------------------*/
-void LZX_Decode(char *filename)
-{
-    unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
-    unsigned int pak_len, raw_len, header, len, pos, threshold, tmp;
-    unsigned char flags, mask;
-
-    printf("- decoding '%s'", filename);
-
-    pak_buffer = Load(filename, &pak_len, LZX_MINIM, LZX_MAXIM);
-
-    header = *pak_buffer;
-    if ((header != CMD_CODE_11) && ((header != CMD_CODE_40)))
-    {
-        free(pak_buffer);
-        printf(", WARNING: file is not LZX encoded!\n");
-        return;
-    }
-
-    raw_len = *(unsigned int *)pak_buffer >> 8;
-    raw_buffer = (unsigned char *)Memory(raw_len, sizeof(char));
-
-    pak = pak_buffer + 4;
-    raw = raw_buffer;
-    pak_end = pak_buffer + pak_len;
-    raw_end = raw_buffer + raw_len;
-
-    mask = 0;
-
-    while (raw < raw_end)
-    {
-        if (!(mask >>= LZX_SHIFT))
-        {
-            if (pak == pak_end)
-                break;
-            flags = *pak++;
-            if (header == CMD_CODE_40)
-                flags = -flags;
-            mask = LZX_MASK;
-        }
-
-        if (!(flags & mask))
-        {
-            if (pak == pak_end)
-                break;
-            *raw++ = *pak++;
-        }
-        else
-        {
-            if (header == CMD_CODE_11)
-            {
-                if (pak + 1 >= pak_end)
-                    break;
-                pos = *pak++;
-                pos = (pos << 8) | *pak++;
-
-                tmp = pos >> 12;
-                if (tmp < LZX_THRESHOLD)
-                {
-                    pos &= 0xFFF;
-                    if (pak == pak_end)
-                        break;
-                    pos = (pos << 8) | *pak++;
-                    threshold = LZX_F;
-                    if (tmp)
-                    {
-                        if (pak == pak_end)
-                            break;
-                        pos = (pos << 8) | *pak++;
-                        threshold = LZX_F1;
-                    }
-                }
-                else
-                {
-                    threshold = 0;
-                }
-
-                len = (pos >> 12) + threshold + 1;
-                pos = (pos & 0xFFF) + 1;
-            }
-            else
-            {
-                if (pak + 1 == pak_end)
-                    break;
-                pos = *pak++;
-                pos |= *pak++ << 8;
-
-                tmp = pos & 0xF;
-                if (tmp < LZX_THRESHOLD)
-                {
-                    if (pak == pak_end)
-                        break;
-                    len = *pak++;
-                    threshold = LZX_F;
-                    if (tmp)
-                    {
-                        if (pak == pak_end)
-                            break;
-                        len = (*pak++ << 8) | len;
-                        threshold = LZX_F1;
-                    }
-                }
-                else
-                {
-                    len = tmp;
-                    threshold = 0;
-                }
-
-                len += threshold;
-                pos >>= 4;
-            }
-
-            if (raw + len > raw_end)
-            {
-                printf(", WARNING: wrong decoded length!");
-                len = raw_end - raw;
-            }
-
-            while (len--)
-                *raw++ = *(raw - pos);
-        }
-    }
-
-    if (header == CMD_CODE_40)
-        pak += *pak == 0x80 ? 3 : 2;
-
-    raw_len = raw - raw_buffer;
-
-    if (raw != raw_end)
-        printf(", WARNING: unexpected end of encoded file!");
-
-    Save(filename, raw_buffer, raw_len);
-
-    free(raw_buffer);
-    free(pak_buffer);
-
-    printf("\n");
-}
-
-/*----------------------------------------------------------------------------*/
-void LZX_Encode(char *filename, int cmd, int vram)
-{
-    unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-    unsigned int raw_len, pak_len, new_len;
-
-    lzx_vram = vram;
-
-    printf("- encoding '%s'", filename);
-
-    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
-
-    pak_buffer = NULL;
-    pak_len = LZX_MAXIM + 1;
-
-    new_buffer = LZX_Code(raw_buffer, raw_len, &new_len, cmd);
-    if (new_len < pak_len)
-    {
-        if (pak_buffer != NULL)
-            free(pak_buffer);
-        pak_buffer = new_buffer;
-        pak_len = new_len;
-    }
-
-    Save(filename, pak_buffer, pak_len);
-
-    free(pak_buffer);
-    free(raw_buffer);
-
-    printf("\n");
-}
-
-/*----------------------------------------------------------------------------*/
 char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd)
 {
     unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg;
@@ -577,6 +322,229 @@ char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd)
     return (pak_buffer);
 }
 
-/*----------------------------------------------------------------------------*/
-/*--  EOF                                           Copyright (C) 2011 CUE  --*/
-/*----------------------------------------------------------------------------*/
+void LZX_Decode(char *filename)
+{
+    unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
+    unsigned int pak_len, raw_len, header, len, pos, threshold, tmp;
+    unsigned char flags, mask;
+
+    printf("- decoding '%s'", filename);
+
+    pak_buffer = Load(filename, &pak_len, LZX_MINIM, LZX_MAXIM);
+
+    header = *pak_buffer;
+    if ((header != CMD_CODE_11) && ((header != CMD_CODE_40)))
+    {
+        free(pak_buffer);
+        printf(", WARNING: file is not LZX encoded!\n");
+        return;
+    }
+
+    raw_len = *(unsigned int *)pak_buffer >> 8;
+    raw_buffer = (unsigned char *)Memory(raw_len, sizeof(char));
+
+    pak = pak_buffer + 4;
+    raw = raw_buffer;
+    pak_end = pak_buffer + pak_len;
+    raw_end = raw_buffer + raw_len;
+
+    mask = 0;
+
+    while (raw < raw_end)
+    {
+        if (!(mask >>= LZX_SHIFT))
+        {
+            if (pak == pak_end)
+                break;
+            flags = *pak++;
+            if (header == CMD_CODE_40)
+                flags = -flags;
+            mask = LZX_MASK;
+        }
+
+        if (!(flags & mask))
+        {
+            if (pak == pak_end)
+                break;
+            *raw++ = *pak++;
+        }
+        else
+        {
+            if (header == CMD_CODE_11)
+            {
+                if (pak + 1 >= pak_end)
+                    break;
+                pos = *pak++;
+                pos = (pos << 8) | *pak++;
+
+                tmp = pos >> 12;
+                if (tmp < LZX_THRESHOLD)
+                {
+                    pos &= 0xFFF;
+                    if (pak == pak_end)
+                        break;
+                    pos = (pos << 8) | *pak++;
+                    threshold = LZX_F;
+                    if (tmp)
+                    {
+                        if (pak == pak_end)
+                            break;
+                        pos = (pos << 8) | *pak++;
+                        threshold = LZX_F1;
+                    }
+                }
+                else
+                {
+                    threshold = 0;
+                }
+
+                len = (pos >> 12) + threshold + 1;
+                pos = (pos & 0xFFF) + 1;
+            }
+            else
+            {
+                if (pak + 1 == pak_end)
+                    break;
+                pos = *pak++;
+                pos |= *pak++ << 8;
+
+                tmp = pos & 0xF;
+                if (tmp < LZX_THRESHOLD)
+                {
+                    if (pak == pak_end)
+                        break;
+                    len = *pak++;
+                    threshold = LZX_F;
+                    if (tmp)
+                    {
+                        if (pak == pak_end)
+                            break;
+                        len = (*pak++ << 8) | len;
+                        threshold = LZX_F1;
+                    }
+                }
+                else
+                {
+                    len = tmp;
+                    threshold = 0;
+                }
+
+                len += threshold;
+                pos >>= 4;
+            }
+
+            if (raw + len > raw_end)
+            {
+                printf(", WARNING: wrong decoded length!");
+                len = raw_end - raw;
+            }
+
+            while (len--)
+                *raw++ = *(raw - pos);
+        }
+    }
+
+    if (header == CMD_CODE_40)
+        pak += *pak == 0x80 ? 3 : 2;
+
+    raw_len = raw - raw_buffer;
+
+    if (raw != raw_end)
+        printf(", WARNING: unexpected end of encoded file!");
+
+    Save(filename, raw_buffer, raw_len);
+
+    free(raw_buffer);
+    free(pak_buffer);
+
+    printf("\n");
+}
+
+void LZX_Encode(char *filename, int cmd, int vram)
+{
+    unsigned char *raw_buffer, *pak_buffer, *new_buffer;
+    unsigned int raw_len, pak_len, new_len;
+
+    lzx_vram = vram;
+
+    printf("- encoding '%s'", filename);
+
+    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
+
+    pak_buffer = NULL;
+    pak_len = LZX_MAXIM + 1;
+
+    new_buffer = LZX_Code(raw_buffer, raw_len, &new_len, cmd);
+    if (new_len < pak_len)
+    {
+        if (pak_buffer != NULL)
+            free(pak_buffer);
+        pak_buffer = new_buffer;
+        pak_len = new_len;
+    }
+
+    Save(filename, pak_buffer, pak_len);
+
+    free(pak_buffer);
+    free(raw_buffer);
+
+    printf("\n");
+}
+
+int main(int argc, char **argv)
+{
+    int cmd, vram;
+    int arg;
+
+    Title();
+
+    if (argc < 2)
+        Usage();
+    if (!strcasecmp(argv[1], "-d"))
+    {
+        cmd = CMD_DECODE;
+    }
+    else if (!strcasecmp(argv[1], "-evb"))
+    {
+        cmd = CMD_CODE_11;
+        vram = LZX_VRAM;
+    }
+    else if (!strcasecmp(argv[1], "-ewb"))
+    {
+        cmd = CMD_CODE_11;
+        vram = LZX_WRAM;
+    }
+    else if (!strcasecmp(argv[1], "-evl"))
+    {
+        cmd = CMD_CODE_40;
+        vram = LZX_VRAM;
+    }
+    else if (!strcasecmp(argv[1], "-ewl"))
+    {
+        cmd = CMD_CODE_40;
+        vram = LZX_WRAM;
+    }
+    else
+        EXIT("Command not supported\n");
+    if (argc < 3)
+        EXIT("Filename not specified\n");
+
+    switch (cmd)
+    {
+        case CMD_DECODE:
+            for (arg = 2; arg < argc; arg++)
+                LZX_Decode(argv[arg]);
+            break;
+        case CMD_CODE_11:
+        case CMD_CODE_40:
+            for (arg = 2; arg < argc; arg++)
+                LZX_Encode(argv[arg], cmd, vram);
+            break;
+        default:
+            break;
+    }
+
+    printf("\nDone\n");
+
+    return (0);
+}

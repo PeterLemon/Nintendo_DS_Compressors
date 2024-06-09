@@ -16,7 +16,6 @@
 /*--  along with this program. If not, see <http://www.gnu.org/licenses/>.  --*/
 /*----------------------------------------------------------------------------*/
 
-/*----------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +26,6 @@
 #include <strings.h>
 #endif
 
-/*----------------------------------------------------------------------------*/
 #define CMD_DECODE  0x00 // decode
 #define CMD_CODE_10 0x10 // LZSS magic number
 
@@ -63,12 +61,9 @@
                // * flags, (RAW_MAXIM + 7) / 8
                // 4 + 0x00FFFFFF + 0x00200000 + padding
 
-/*----------------------------------------------------------------------------*/
 unsigned char ring[LZS_N + LZS_F - 1];
 int dad[LZS_N + 1], lson[LZS_N + 1], rson[LZS_N + 1 + 256];
 size_t pos_ring, len_ring, lzs_vram;
-
-/*----------------------------------------------------------------------------*/
 
 #define EXIT(text)    \
     {                 \
@@ -76,93 +71,7 @@ size_t pos_ring, len_ring, lzs_vram;
         exit(-1);     \
     }
 
-/*----------------------------------------------------------------------------*/
-void Title(void);
-void Usage(void);
 
-unsigned char *Load(char *filename, size_t *length, size_t min, size_t max);
-void Save(char *filename, unsigned char *buffer, size_t length);
-void *Memory(size_t length, size_t size);
-
-void LZS_Decode(char *filename);
-void LZS_Encode(char *filename, int mode);
-unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len,
-                        size_t best);
-
-unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_len);
-void LZS_InitTree(void);
-void LZS_InsertNode(int r);
-void LZS_DeleteNode(int p);
-
-/*----------------------------------------------------------------------------*/
-int main(int argc, char **argv)
-{
-    int cmd, mode;
-    int arg;
-
-    Title();
-
-    if (argc < 2)
-        Usage();
-    if (!strcasecmp(argv[1], "-d"))
-    {
-        cmd = CMD_DECODE;
-    }
-    else if (!strcasecmp(argv[1], "-evn"))
-    {
-        cmd = CMD_CODE_10;
-        mode = LZS_VRAM;
-    }
-    else if (!strcasecmp(argv[1], "-ewn"))
-    {
-        cmd = CMD_CODE_10;
-        mode = LZS_WRAM;
-    }
-    else if (!strcasecmp(argv[1], "-evf"))
-    {
-        cmd = CMD_CODE_10;
-        mode = LZS_VFAST;
-    }
-    else if (!strcasecmp(argv[1], "-ewf"))
-    {
-        cmd = CMD_CODE_10;
-        mode = LZS_WFAST;
-    }
-    else if (!strcasecmp(argv[1], "-evo"))
-    {
-        cmd = CMD_CODE_10;
-        mode = LZS_VBEST;
-    }
-    else if (!strcasecmp(argv[1], "-ewo"))
-    {
-        cmd = CMD_CODE_10;
-        mode = LZS_WBEST;
-    }
-    else
-        EXIT("Command not supported\n");
-    if (argc < 3)
-        EXIT("Filename not specified\n");
-
-    switch (cmd)
-    {
-        case CMD_DECODE:
-            for (arg = 2; arg < argc; arg++)
-                LZS_Decode(argv[arg]);
-            break;
-        case CMD_CODE_10:
-            for (arg = 2; arg < argc; arg++)
-                LZS_Encode(argv[arg], mode);
-            break;
-        default:
-            break;
-    }
-
-    printf("\nDone\n");
-
-    return (0);
-}
-
-/*----------------------------------------------------------------------------*/
 void Title(void)
 {
     printf("\n"
@@ -171,7 +80,6 @@ void Title(void)
            "\n");
 }
 
-/*----------------------------------------------------------------------------*/
 void Usage(void)
 {
     EXIT("Usage: LZSS command filename [filename [...]]\n"
@@ -189,7 +97,15 @@ void Usage(void)
          "* the original file is overwritten with the new file\n");
 }
 
-/*----------------------------------------------------------------------------*/
+void *Memory(size_t length, size_t size)
+{
+    void *fb = calloc(length, size);
+    if (fb == NULL)
+        EXIT("\nMemory error\n");
+
+    return (fb);
+}
+
 unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
 {
     FILE *fp;
@@ -214,7 +130,6 @@ unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
     return (fb);
 }
 
-/*----------------------------------------------------------------------------*/
 void Save(char *filename, unsigned char *buffer, size_t length)
 {
     FILE *fp;
@@ -227,19 +142,6 @@ void Save(char *filename, unsigned char *buffer, size_t length)
         EXIT("\nFile close error\n");
 }
 
-/*----------------------------------------------------------------------------*/
-void *Memory(size_t length, size_t size)
-{
-    void *fb;
-
-    fb = calloc(length, size);
-    if (fb == NULL)
-        EXIT("\nMemory error\n");
-
-    return (fb);
-}
-
-/*----------------------------------------------------------------------------*/
 void LZS_Decode(char *filename)
 {
     unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
@@ -317,7 +219,6 @@ void LZS_Decode(char *filename)
     printf("\n");
 }
 
-/*----------------------------------------------------------------------------*/
 void LZS_Encode(char *filename, int mode)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
@@ -357,7 +258,6 @@ void LZS_Encode(char *filename, int mode)
     printf("\n");
 }
 
-/*----------------------------------------------------------------------------*/
 unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len,
                         size_t best)
 {
@@ -454,7 +354,6 @@ unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
     return (pak_buffer);
 }
 
-/*----------------------------------------------------------------------------*/
 unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_len)
 {
     unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg;
@@ -538,7 +437,6 @@ unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
     return (pak_buffer);
 }
 
-/*----------------------------------------------------------------------------*/
 void LZS_InitTree(void)
 {
     int i;
@@ -550,7 +448,6 @@ void LZS_InitTree(void)
         dad[i] = LZS_NIL;
 }
 
-/*----------------------------------------------------------------------------*/
 void LZS_InsertNode(int r)
 {
     unsigned char *key;
@@ -622,7 +519,6 @@ void LZS_InsertNode(int r)
     dad[p] = LZS_NIL;
 }
 
-/*----------------------------------------------------------------------------*/
 void LZS_DeleteNode(int p)
 {
     int q;
@@ -668,6 +564,69 @@ void LZS_DeleteNode(int p)
     dad[p] = LZS_NIL;
 }
 
-/*----------------------------------------------------------------------------*/
-/*--  EOF                                           Copyright (C) 2011 CUE  --*/
-/*----------------------------------------------------------------------------*/
+int main(int argc, char **argv)
+{
+    int cmd, mode;
+    int arg;
+
+    Title();
+
+    if (argc < 2)
+        Usage();
+    if (!strcasecmp(argv[1], "-d"))
+    {
+        cmd = CMD_DECODE;
+    }
+    else if (!strcasecmp(argv[1], "-evn"))
+    {
+        cmd = CMD_CODE_10;
+        mode = LZS_VRAM;
+    }
+    else if (!strcasecmp(argv[1], "-ewn"))
+    {
+        cmd = CMD_CODE_10;
+        mode = LZS_WRAM;
+    }
+    else if (!strcasecmp(argv[1], "-evf"))
+    {
+        cmd = CMD_CODE_10;
+        mode = LZS_VFAST;
+    }
+    else if (!strcasecmp(argv[1], "-ewf"))
+    {
+        cmd = CMD_CODE_10;
+        mode = LZS_WFAST;
+    }
+    else if (!strcasecmp(argv[1], "-evo"))
+    {
+        cmd = CMD_CODE_10;
+        mode = LZS_VBEST;
+    }
+    else if (!strcasecmp(argv[1], "-ewo"))
+    {
+        cmd = CMD_CODE_10;
+        mode = LZS_WBEST;
+    }
+    else
+        EXIT("Command not supported\n");
+    if (argc < 3)
+        EXIT("Filename not specified\n");
+
+    switch (cmd)
+    {
+        case CMD_DECODE:
+            for (arg = 2; arg < argc; arg++)
+                LZS_Decode(argv[arg]);
+            break;
+        case CMD_CODE_10:
+            for (arg = 2; arg < argc; arg++)
+                LZS_Encode(argv[arg], mode);
+            break;
+        default:
+            break;
+    }
+
+    printf("\nDone\n");
+
+    return 0;
+}
