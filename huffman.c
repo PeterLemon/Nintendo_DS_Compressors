@@ -741,6 +741,7 @@ unsigned char *HUF_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
     while (len--)
         *pak++ = *cod++;
 
+    pk4 = NULL;
     mask4 = 0;
     while (raw < raw_end)
     {
@@ -762,11 +763,16 @@ unsigned char *HUF_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
                 if (!(mask4 >>= HUF_SHIFT))
                 {
                     mask4 = HUF_MASK4;
-                    *(pk4 = (unsigned int *)pak) = 0;
+                    pk4 = (unsigned int *)pak;
+                    *pk4 = 0;
                     pak += 4;
                 }
                 if (*cwork & mask)
+                {
+                    if (pk4 == NULL)
+                        EXIT(", ERROR: NULL pk4 pointer!"); // never!
                     *pk4 |= mask4;
+                }
                 if (!(mask >>= HUF_SHIFT))
                 {
                     mask = HUF_MASK;

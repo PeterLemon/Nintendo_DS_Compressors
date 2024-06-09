@@ -311,12 +311,14 @@ unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
     raw_end = raw_buffer + raw_len;
 
     mask = 0;
+    flg = NULL;
 
     while (raw < raw_end)
     {
         if (!(mask >>= LZS_SHIFT))
         {
-            *(flg = pak++) = 0;
+            flg = pak++;
+            *flg = 0;
             mask = LZS_MASK;
         }
 
@@ -331,8 +333,10 @@ unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
                 {
                     raw += len_best;
                     SEARCH(len_next, pos_next);
+                    (void)pos_next; // Unused
                     raw -= len_best - 1;
                     SEARCH(len_post, pos_post);
+                    (void)pos_post; // Unused
                     raw--;
 
                     if (len_next <= LZS_THRESHOLD)
@@ -350,6 +354,8 @@ unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
         if (len_best > LZS_THRESHOLD)
         {
             raw += len_best;
+            if (flg == NULL)
+                EXIT(", ERROR: flg is NULL!\n");
             *flg |= mask;
             *pak++ = ((len_best - (LZS_THRESHOLD + 1)) << 4) | ((pos_best - 1) >> 8);
             *pak++ = (pos_best - 1) & 0xFF;
@@ -508,7 +514,10 @@ void LZS_Decode(char *filename)
             }
             pos = (pos & 0xFFF) + 1;
             while (len--)
-                *raw++ = *(raw - pos);
+            {
+                *raw = *(raw - pos);
+                raw++;
+            }
         }
     }
 
