@@ -135,11 +135,11 @@ void Usage(void)
 /*----------------------------------------------------------------------------*/
 unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
 {
-    FILE *fp;
     size_t fs;
     unsigned char *fb;
+    FILE *fp = fopen(filename, "rb");
 
-    if ((fp = fopen(filename, "rb")) == NULL)
+    if (fp == NULL)
         EXIT("\nFile open error\n");
     fseek(fp, 0, SEEK_END);
     fs = ftell(fp);
@@ -154,15 +154,15 @@ unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
 
     *length = fs;
 
-    return (fb);
+    return fb;
 }
 
 /*----------------------------------------------------------------------------*/
 void Save(char *filename, unsigned char *buffer, size_t length)
 {
-    FILE *fp;
+    FILE *fp = fopen(filename, "wb");
 
-    if ((fp = fopen(filename, "wb")) == NULL)
+    if (fp == NULL)
         EXIT("\nFile create error\n");
     if (fwrite(buffer, 1, length, fp) != length)
         EXIT("\nFile write error\n");
