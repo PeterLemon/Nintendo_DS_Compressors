@@ -142,120 +142,131 @@ void Save(char *filename, unsigned char *buffer, size_t length)
         EXIT("\nFile close error\n");
 }
 
-void LZS_Decode(char *filename)
+void LZS_InsertNode(int r)
 {
-    unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
-    size_t pak_len, raw_len;
-    unsigned int header, len, pos;
-    unsigned char flags, mask;
+    unsigned char *key;
+    size_t i;
+    int p, cmp, prev;
 
-    printf("- decoding '%s'", filename);
+    prev = (r - 1) & (LZS_N - 1);
 
-    pak_buffer = Load(filename, &pak_len, LZS_MINIM, LZS_MAXIM);
+    cmp = 1;
+    len_ring = 0;
 
-    header = *pak_buffer;
-    if (header != CMD_CODE_10)
+    key = &ring[r];
+    p = LZS_N + 1 + key[0];
+
+    rson[r] = lson[r] = LZS_NIL;
+
+    for (;;)
     {
-        free(pak_buffer);
-        printf(", WARNING: file is not LZSS encoded!\n");
-        return;
-    }
-
-    raw_len = *(unsigned int *)pak_buffer >> 8;
-    raw_buffer = Memory(raw_len, sizeof(char));
-
-    pak = pak_buffer + 4;
-    raw = raw_buffer;
-    pak_end = pak_buffer + pak_len;
-    raw_end = raw_buffer + raw_len;
-
-    flags = 0;
-    mask = 0;
-
-    while (raw < raw_end)
-    {
-        if (!(mask >>= LZS_SHIFT))
+        if (cmp >= 0)
         {
-            if (pak == pak_end)
-                break;
-            flags = *pak++;
-            mask = LZS_MASK;
-        }
-
-        if (!(flags & mask))
-        {
-            if (pak == pak_end)
-                break;
-            *raw++ = *pak++;
+            if (rson[p] != LZS_NIL)
+                p = rson[p];
+            else
+            {
+                rson[p] = r;
+                dad[r] = p;
+                return;
+            }
         }
         else
         {
-            if (pak + 1 >= pak_end)
-                break;
-            pos = *pak++;
-            pos = (pos << 8) | *pak++;
-            len = (pos >> 12) + LZS_THRESHOLD + 1;
-            if (raw + len > raw_end)
+            if (lson[p] != LZS_NIL)
+                p = lson[p];
+            else
             {
-                printf(", WARNING: wrong decoded length!");
-                len = raw_end - raw;
+                lson[p] = r;
+                dad[r] = p;
+                return;
             }
-            pos = (pos & 0xFFF) + 1;
-            while (len--)
-                *raw++ = *(raw - pos);
+        }
+
+        for (i = 1; i < LZS_F; i++)
+            if ((cmp = key[i] - ring[p + i]))
+                break;
+
+        if (i > len_ring)
+        {
+            if (!lzs_vram || (p != prev))
+            {
+                pos_ring = p;
+                if ((len_ring = i) == LZS_F)
+                    break;
+            }
         }
     }
 
-    raw_len = raw - raw_buffer;
+    dad[r] = dad[p];
+    lson[r] = lson[p];
+    rson[r] = rson[p];
 
-    if (raw != raw_end)
-        printf(", WARNING: unexpected end of encoded file!");
+    dad[lson[p]] = r;
+    dad[rson[p]] = r;
 
-    Save(filename, raw_buffer, raw_len);
+    if (rson[dad[p]] == p)
+        rson[dad[p]] = r;
+    else
+        lson[dad[p]] = r;
 
-    free(raw_buffer);
-    free(pak_buffer);
-
-    printf("\n");
+    dad[p] = LZS_NIL;
 }
 
-void LZS_Encode(char *filename, int mode)
+void LZS_DeleteNode(int p)
 {
-    unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-    size_t raw_len, pak_len, new_len;
+    int q;
 
-    lzs_vram = mode & 0xF;
+    if (dad[p] == LZS_NIL)
+        return;
 
-    printf("- encoding '%s'", filename);
-
-    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
-
-    pak_buffer = NULL;
-    pak_len = LZS_MAXIM + 1;
-
-    if (!(mode & LZS_FAST))
+    if (rson[p] == LZS_NIL)
     {
-        mode = mode & LZS_BEST ? 1 : 0;
-        new_buffer = LZS_Code(raw_buffer, raw_len, &new_len, mode);
+        q = lson[p];
+    }
+    else if (lson[p] == LZS_NIL)
+    {
+        q = rson[p];
     }
     else
     {
-        new_buffer = LZS_Fast(raw_buffer, raw_len, &new_len);
+        q = lson[p];
+        if (rson[q] != LZS_NIL)
+        {
+            do
+            {
+                q = rson[q];
+            } while (rson[q] != LZS_NIL);
+
+            rson[dad[q]] = lson[q];
+            dad[lson[q]] = dad[q];
+            lson[q] = lson[p];
+            dad[lson[p]] = q;
+        }
+
+        rson[q] = rson[p];
+        dad[rson[p]] = q;
     }
-    if (new_len < pak_len)
-    {
-        if (pak_buffer != NULL)
-            free(pak_buffer);
-        pak_buffer = new_buffer;
-        pak_len = new_len;
-    }
 
-    Save(filename, pak_buffer, pak_len);
+    dad[q] = dad[p];
 
-    free(pak_buffer);
-    free(raw_buffer);
+    if (rson[dad[p]] == p)
+        rson[dad[p]] = q;
+    else
+        lson[dad[p]] = q;
 
-    printf("\n");
+    dad[p] = LZS_NIL;
+}
+
+void LZS_InitTree(void)
+{
+    int i;
+
+    for (i = LZS_N + 1; i <= LZS_N + 256; i++)
+        rson[i] = LZS_NIL;
+
+    for (i = 0; i < LZS_N; i++)
+        dad[i] = LZS_NIL;
 }
 
 unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len,
@@ -437,131 +448,120 @@ unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
     return pak_buffer;
 }
 
-void LZS_InitTree(void)
+void LZS_Decode(char *filename)
 {
-    int i;
+    unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
+    size_t pak_len, raw_len;
+    unsigned int header, len, pos;
+    unsigned char flags, mask;
 
-    for (i = LZS_N + 1; i <= LZS_N + 256; i++)
-        rson[i] = LZS_NIL;
+    printf("- decoding '%s'", filename);
 
-    for (i = 0; i < LZS_N; i++)
-        dad[i] = LZS_NIL;
-}
+    pak_buffer = Load(filename, &pak_len, LZS_MINIM, LZS_MAXIM);
 
-void LZS_InsertNode(int r)
-{
-    unsigned char *key;
-    size_t i;
-    int p, cmp, prev;
-
-    prev = (r - 1) & (LZS_N - 1);
-
-    cmp = 1;
-    len_ring = 0;
-
-    key = &ring[r];
-    p = LZS_N + 1 + key[0];
-
-    rson[r] = lson[r] = LZS_NIL;
-
-    for (;;)
+    header = *pak_buffer;
+    if (header != CMD_CODE_10)
     {
-        if (cmp >= 0)
+        free(pak_buffer);
+        printf(", WARNING: file is not LZSS encoded!\n");
+        return;
+    }
+
+    raw_len = *(unsigned int *)pak_buffer >> 8;
+    raw_buffer = Memory(raw_len, sizeof(char));
+
+    pak = pak_buffer + 4;
+    raw = raw_buffer;
+    pak_end = pak_buffer + pak_len;
+    raw_end = raw_buffer + raw_len;
+
+    flags = 0;
+    mask = 0;
+
+    while (raw < raw_end)
+    {
+        if (!(mask >>= LZS_SHIFT))
         {
-            if (rson[p] != LZS_NIL)
-                p = rson[p];
-            else
-            {
-                rson[p] = r;
-                dad[r] = p;
-                return;
-            }
+            if (pak == pak_end)
+                break;
+            flags = *pak++;
+            mask = LZS_MASK;
+        }
+
+        if (!(flags & mask))
+        {
+            if (pak == pak_end)
+                break;
+            *raw++ = *pak++;
         }
         else
         {
-            if (lson[p] != LZS_NIL)
-                p = lson[p];
-            else
-            {
-                lson[p] = r;
-                dad[r] = p;
-                return;
-            }
-        }
-
-        for (i = 1; i < LZS_F; i++)
-            if ((cmp = key[i] - ring[p + i]))
+            if (pak + 1 >= pak_end)
                 break;
-
-        if (i > len_ring)
-        {
-            if (!lzs_vram || (p != prev))
+            pos = *pak++;
+            pos = (pos << 8) | *pak++;
+            len = (pos >> 12) + LZS_THRESHOLD + 1;
+            if (raw + len > raw_end)
             {
-                pos_ring = p;
-                if ((len_ring = i) == LZS_F)
-                    break;
+                printf(", WARNING: wrong decoded length!");
+                len = raw_end - raw;
             }
+            pos = (pos & 0xFFF) + 1;
+            while (len--)
+                *raw++ = *(raw - pos);
         }
     }
 
-    dad[r] = dad[p];
-    lson[r] = lson[p];
-    rson[r] = rson[p];
+    raw_len = raw - raw_buffer;
 
-    dad[lson[p]] = r;
-    dad[rson[p]] = r;
+    if (raw != raw_end)
+        printf(", WARNING: unexpected end of encoded file!");
 
-    if (rson[dad[p]] == p)
-        rson[dad[p]] = r;
-    else
-        lson[dad[p]] = r;
+    Save(filename, raw_buffer, raw_len);
 
-    dad[p] = LZS_NIL;
+    free(raw_buffer);
+    free(pak_buffer);
+
+    printf("\n");
 }
 
-void LZS_DeleteNode(int p)
+void LZS_Encode(char *filename, int mode)
 {
-    int q;
+    unsigned char *raw_buffer, *pak_buffer, *new_buffer;
+    size_t raw_len, pak_len, new_len;
 
-    if (dad[p] == LZS_NIL)
-        return;
+    lzs_vram = mode & 0xF;
 
-    if (rson[p] == LZS_NIL)
+    printf("- encoding '%s'", filename);
+
+    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
+
+    pak_buffer = NULL;
+    pak_len = LZS_MAXIM + 1;
+
+    if (!(mode & LZS_FAST))
     {
-        q = lson[p];
-    }
-    else if (lson[p] == LZS_NIL)
-    {
-        q = rson[p];
+        mode = mode & LZS_BEST ? 1 : 0;
+        new_buffer = LZS_Code(raw_buffer, raw_len, &new_len, mode);
     }
     else
     {
-        q = lson[p];
-        if (rson[q] != LZS_NIL)
-        {
-            do
-            {
-                q = rson[q];
-            } while (rson[q] != LZS_NIL);
-
-            rson[dad[q]] = lson[q];
-            dad[lson[q]] = dad[q];
-            lson[q] = lson[p];
-            dad[lson[p]] = q;
-        }
-
-        rson[q] = rson[p];
-        dad[rson[p]] = q;
+        new_buffer = LZS_Fast(raw_buffer, raw_len, &new_len);
+    }
+    if (new_len < pak_len)
+    {
+        if (pak_buffer != NULL)
+            free(pak_buffer);
+        pak_buffer = new_buffer;
+        pak_len = new_len;
     }
 
-    dad[q] = dad[p];
+    Save(filename, pak_buffer, pak_len);
 
-    if (rson[dad[p]] == p)
-        rson[dad[p]] = q;
-    else
-        lson[dad[p]] = q;
+    free(pak_buffer);
+    free(raw_buffer);
 
-    dad[p] = LZS_NIL;
+    printf("\n");
 }
 
 int main(int argc, char **argv)
