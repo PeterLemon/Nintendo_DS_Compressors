@@ -60,11 +60,7 @@
 int lzx_vram;
 
 /*----------------------------------------------------------------------------*/
-#define BREAK(text)   \
-    {                 \
-        printf(text); \
-        return;       \
-    }
+
 #define EXIT(text)    \
     {                 \
         printf(text); \
@@ -233,7 +229,8 @@ void LZX_Decode(char *filename)
     if ((header != CMD_CODE_11) && ((header != CMD_CODE_40)))
     {
         free(pak_buffer);
-        BREAK(", WARNING: file is not LZX encoded!\n");
+        printf(", WARNING: file is not LZX encoded!\n");
+        return;
     }
 
     raw_len = *(unsigned int *)pak_buffer >> 8;

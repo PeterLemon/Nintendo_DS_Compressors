@@ -54,11 +54,7 @@
                // 4 + 0x00FFFFFF + 0x00200000 + padding
 
 /*----------------------------------------------------------------------------*/
-#define BREAK(text)   \
-    {                 \
-        printf(text); \
-        return;       \
-    }
+
 #define EXIT(text)    \
     {                 \
         printf(text); \
@@ -202,7 +198,8 @@ void LZE_Decode(char *filename)
     if (header != CMD_CODE_LE)
     {
         free(pak_buffer);
-        BREAK(", WARNING: file is not LZE encoded!\n");
+        printf(", WARNING: file is not LZE encoded!\n");
+        return;
     }
 
     raw_len = *(unsigned int *)(pak_buffer + 2);

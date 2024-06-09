@@ -69,11 +69,7 @@ int dad[LZS_N + 1], lson[LZS_N + 1], rson[LZS_N + 1 + 256];
 size_t pos_ring, len_ring, lzs_vram;
 
 /*----------------------------------------------------------------------------*/
-#define BREAK(text)   \
-    {                 \
-        printf(text); \
-        return;       \
-    }
+
 #define EXIT(text)    \
     {                 \
         printf(text); \
@@ -259,7 +255,8 @@ void LZS_Decode(char *filename)
     if (header != CMD_CODE_10)
     {
         free(pak_buffer);
-        BREAK(", WARNING: file is not LZSS encoded!\n");
+        printf(", WARNING: file is not LZSS encoded!\n");
+        return;
     }
 
     raw_len = *(unsigned int *)pak_buffer >> 8;

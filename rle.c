@@ -53,11 +53,7 @@
                // 4 + 0x00FFFFFF + 0x00020000 + padding
 
 /*----------------------------------------------------------------------------*/
-#define BREAK(text)   \
-    {                 \
-        printf(text); \
-        return;       \
-    }
+
 #define EXIT(text)    \
     {                 \
         printf(text); \
@@ -201,7 +197,8 @@ void RLE_Decode(char *filename)
     if (header != CMD_CODE_30)
     {
         free(pak_buffer);
-        BREAK(", WARNING: file is not RLE encoded!\n");
+        printf(", WARNING: file is not RLE encoded!\n");
+        return;
     }
 
     raw_len = *(unsigned int *)pak_buffer >> 8;

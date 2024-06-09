@@ -87,11 +87,7 @@ huffman_code **codes;
 unsigned int num_bits, max_symbols, num_leafs, num_nodes;
 
 /*----------------------------------------------------------------------------*/
-#define BREAK(text)   \
-    {                 \
-        printf(text); \
-        return;       \
-    }
+
 #define EXIT(text)    \
     {                 \
         printf(text); \
@@ -281,7 +277,8 @@ void HUF_Decode(char *filename)
         if ((header != CMD_CODE_24) && (header != CMD_CODE_28))
         {
             free(pak_buffer);
-            BREAK(", WARNING: file is not Huffman encoded!\n");
+            printf(", WARNING: file is not Huffman encoded!\n");
+            return;
         }
 
     num_bits = header & 0xF;
