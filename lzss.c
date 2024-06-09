@@ -23,6 +23,8 @@
 
 #ifdef _MSC_VER
 #define strcasecmp _stricmp
+#else
+#include <strings.h>
 #endif
 
 /*----------------------------------------------------------------------------*/
@@ -62,7 +64,7 @@
 /*----------------------------------------------------------------------------*/
 unsigned char ring[LZS_N + LZS_F - 1];
 int           dad[LZS_N + 1], lson[LZS_N + 1], rson[LZS_N + 1 + 256];
-int           pos_ring, len_ring, lzs_vram;
+size_t pos_ring, len_ring, lzs_vram;
 
 /*----------------------------------------------------------------------------*/
 #define BREAK(text) { printf(text); return; }
@@ -72,15 +74,15 @@ int           pos_ring, len_ring, lzs_vram;
 void  Title(void);
 void  Usage(void);
 
-char *Load(char *filename, int *length, int min, int max);
-void  Save(char *filename, char *buffer, int length);
-char *Memory(int length, int size);
+unsigned char *Load(char *filename, size_t *length, size_t min, size_t max);
+void  Save(char *filename, unsigned char *buffer, size_t length);
+void *Memory(size_t length, size_t size);
 
 void  LZS_Decode(char *filename);
 void  LZS_Encode(char *filename, int mode);
-char *LZS_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best);
+unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len, size_t best);
 
-char *LZS_Fast(unsigned char *raw_buffer, int raw_len, int *new_len);
+unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_len);
 void  LZS_InitTree(void);
 void  LZS_InsertNode(int r);
 void  LZS_DeleteNode(int p);
@@ -149,10 +151,10 @@ void Usage(void) {
 }
 
 /*----------------------------------------------------------------------------*/
-char *Load(char *filename, int *length, int min, int max) {
+unsigned char *Load(char *filename, size_t *length, size_t min, size_t max) {
   FILE *fp;
-  int   fs;
-  char *fb;
+  size_t fs;
+  unsigned char *fb;
 
   if ((fp = fopen(filename, "rb")) == NULL) EXIT("\nFile open error\n");
   fseek(fp, 0, SEEK_END);
@@ -169,7 +171,7 @@ char *Load(char *filename, int *length, int min, int max) {
 }
 
 /*----------------------------------------------------------------------------*/
-void Save(char *filename, char *buffer, int length) {
+void Save(char *filename, unsigned char *buffer, size_t length) {
   FILE *fp;
 
   if ((fp = fopen(filename, "wb")) == NULL) EXIT("\nFile create error\n");
@@ -178,10 +180,10 @@ void Save(char *filename, char *buffer, int length) {
 }
 
 /*----------------------------------------------------------------------------*/
-char *Memory(int length, int size) {
-  char *fb;
+void *Memory(size_t length, size_t size) {
+  void *fb;
 
-  fb = (char *) calloc(length, size);
+  fb = calloc(length, size);
   if (fb == NULL) EXIT("\nMemory error\n");
 
   return(fb);
@@ -190,8 +192,9 @@ char *Memory(int length, int size) {
 /*----------------------------------------------------------------------------*/
 void LZS_Decode(char *filename) {
   unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
-  unsigned int   pak_len, raw_len, header, len, pos;
-  unsigned char  flags, mask;
+  size_t pak_len, raw_len;
+  unsigned int header, len, pos;
+  unsigned char flags, mask;
 
   printf("- decoding '%s'", filename);
 
@@ -204,13 +207,14 @@ void LZS_Decode(char *filename) {
   }
 
   raw_len = *(unsigned int *)pak_buffer >> 8;
-  raw_buffer = (unsigned char *) Memory(raw_len, sizeof(char));
+  raw_buffer = Memory(raw_len, sizeof(char));
 
   pak = pak_buffer + 4;
   raw = raw_buffer;
   pak_end = pak_buffer + pak_len;
   raw_end = raw_buffer + raw_len;
 
+  flags = 0;
   mask = 0;
 
   while (raw < raw_end) {
@@ -252,7 +256,7 @@ void LZS_Decode(char *filename) {
 /*----------------------------------------------------------------------------*/
 void LZS_Encode(char *filename, int mode) {
   unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-  unsigned int   raw_len, pak_len, new_len;
+  size_t raw_len, pak_len, new_len;
 
   lzs_vram = mode & 0xF;
 
@@ -284,9 +288,9 @@ void LZS_Encode(char *filename, int mode) {
 }
 
 /*----------------------------------------------------------------------------*/
-char *LZS_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best) {
+unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len, size_t best) {
   unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg;
-  unsigned int   pak_len, len, pos, len_best, pos_best;
+  size_t pak_len, len, pos, len_best, pos_best;
   unsigned int   len_next, pos_next, len_post, pos_post;
   unsigned char  mask;
 
@@ -308,7 +312,7 @@ char *LZS_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best) {
 }
 
   pak_len = 4 + raw_len + ((raw_len + 7) / 8);
-  pak_buffer = (unsigned char *) Memory(pak_len, sizeof(char));
+  pak_buffer = Memory(pak_len, sizeof(char));
 
   *(unsigned int *)pak_buffer = CMD_CODE_10 | (raw_len << 8);
 
@@ -361,13 +365,14 @@ char *LZS_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best) {
 }
 
 /*----------------------------------------------------------------------------*/
-char *LZS_Fast(unsigned char *raw_buffer, int raw_len, int *new_len) {
+unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_len) {
   unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg;
-  unsigned int   pak_len, len, r, s, len_tmp, i;
+  size_t pak_len, len;
+  unsigned int r, s, len_tmp, i;
   unsigned char  mask; 
 
   pak_len = 4 + raw_len + ((raw_len + 7) / 8);
-  pak_buffer = (unsigned char *) Memory(pak_len, sizeof(char));
+  pak_buffer = Memory(pak_len, sizeof(char));
 
   *(unsigned int *)pak_buffer = CMD_CODE_10 | (raw_len << 8);
 
@@ -443,7 +448,8 @@ void LZS_InitTree(void) {
 /*----------------------------------------------------------------------------*/
 void LZS_InsertNode(int r) {
   unsigned char *key;
-  int            i, p, cmp, prev;
+  size_t i;
+  int p, cmp, prev;
 
   prev = (r - 1) & (LZS_N - 1);
 

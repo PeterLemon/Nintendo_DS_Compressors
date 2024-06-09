@@ -23,6 +23,8 @@
 
 #ifdef _MSC_VER
 #define strcasecmp _stricmp
+#else
+#include <strings.h>
 #endif
 
 /*----------------------------------------------------------------------------*/
@@ -87,16 +89,16 @@ unsigned int    num_bits, max_symbols, num_leafs, num_nodes;
 /*----------------------------------------------------------------------------*/
 void  Title(void);
 void  Usage(void);
-char *Load(char *filename, int *length, int min, int max);
-void  Save(char *filename, char *buffer, int length);
-char *Memory(int length, int size);
+unsigned char *Load(char *filename, size_t *length, size_t min, size_t max);
+void  Save(char *filename, unsigned char *buffer, size_t length);
+void *Memory(size_t length, size_t size);
 
 void  HUF_Decode(char *filename);
 void  HUF_Encode(char *filename, int cmd);
-char *HUF_Code(unsigned char *raw_buffer, int raw_len, int *new_len);
+unsigned char *HUF_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len);
 
 void  HUF_InitFreqs(void);
-void  HUF_CreateFreqs(unsigned char *raw_buffer, int raw_len);
+void  HUF_CreateFreqs(unsigned char *raw_buffer, size_t raw_len);
 void  HUF_FreeFreqs(void);
 void  HUF_InitTree(void);
 void  HUF_CreateTree(void);
@@ -163,7 +165,7 @@ void Title(void) {
 
 /*----------------------------------------------------------------------------*/
 void Usage(void) {
-  EXIT(
+  printf(
     "Usage: HUFFMAN command filename [filename [...]]\n"
     "\n"
     "command:\n"
@@ -182,13 +184,14 @@ void Usage(void) {
     "* 1/2-bits are not standard modes\n"
 #endif
   );
+  exit(-1);
 }
 
 /*----------------------------------------------------------------------------*/
-char *Load(char *filename, int *length, int min, int max) {
+unsigned char *Load(char *filename, size_t *length, size_t min, size_t max) {
   FILE *fp;
-  int   fs;
-  char *fb;
+  size_t fs;
+  unsigned char *fb;
 
   if ((fp = fopen(filename, "rb")) == NULL) EXIT("\nFile open error\n");
   fseek(fp, 0, SEEK_END);
@@ -205,7 +208,7 @@ char *Load(char *filename, int *length, int min, int max) {
 }
 
 /*----------------------------------------------------------------------------*/
-void Save(char *filename, char *buffer, int length) {
+void Save(char *filename, unsigned char *buffer, size_t length) {
   FILE *fp;
 
   if ((fp = fopen(filename, "wb")) == NULL) EXIT("\nFile create error\n");
@@ -214,10 +217,10 @@ void Save(char *filename, char *buffer, int length) {
 }
 
 /*----------------------------------------------------------------------------*/
-char *Memory(int length, int size) {
-  char *fb;
+void *Memory(size_t length, size_t size) {
+  void *fb;
 
-  fb = (char *) calloc(length, size);
+  fb = calloc(length, size);
   if (fb == NULL) EXIT("\nMemory error\n");
 
   return(fb);
@@ -226,7 +229,8 @@ char *Memory(int length, int size) {
 /*----------------------------------------------------------------------------*/
 void HUF_Decode(char *filename) {
   unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
-  unsigned int   pak_len, raw_len, header;
+  size_t pak_len, raw_len;
+  unsigned int header;
   unsigned char *tree;
   unsigned int   pos, next, mask4, code, ch, nbits;
 
@@ -246,7 +250,7 @@ void HUF_Decode(char *filename) {
   num_bits = header & 0xF;
 
   raw_len = *(unsigned int *)pak_buffer >> 8;
-  raw_buffer = (unsigned char *) Memory(raw_len, sizeof(char));
+  raw_buffer = Memory(raw_len, sizeof(char));
 
   pak = pak_buffer + 4;
   raw = raw_buffer;
@@ -257,6 +261,8 @@ void HUF_Decode(char *filename) {
   pak += (*pak + 1) << 1;
 
   nbits = 0;
+
+  code = 0;
 
   pos = *(tree + 1);
   next = 0;
@@ -305,7 +311,7 @@ void HUF_Decode(char *filename) {
 /*----------------------------------------------------------------------------*/
 void HUF_Encode(char *filename, int cmd) {
   unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-  unsigned int   raw_len, pak_len, new_len;
+  size_t raw_len, pak_len, new_len;
 
   printf("- encoding '%s'", filename);
 
@@ -358,7 +364,7 @@ void HUF_Encode(char *filename, int cmd) {
 }
 
 /*----------------------------------------------------------------------------*/
-char *HUF_Code(unsigned char *raw_buffer, int raw_len, int *new_len) {
+unsigned char *HUF_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len) {
   unsigned char *pak_buffer, *pak, *raw, *raw_end, *cod;
   unsigned int   pak_len, len;
   huffman_code  *code;
@@ -368,7 +374,7 @@ char *HUF_Code(unsigned char *raw_buffer, int raw_len, int *new_len) {
   max_symbols = 1 << num_bits;
 
   pak_len = 4 + (max_symbols << 1) + raw_len + 3;
-  pak_buffer = (unsigned char *) Memory(pak_len, sizeof(char));
+  pak_buffer = Memory(pak_len, sizeof(char));
 
   *(unsigned int *)pak_buffer = (CMD_CODE_20 + num_bits) | (raw_len << 8);
 
@@ -459,13 +465,13 @@ char *HUF_Code(unsigned char *raw_buffer, int raw_len, int *new_len) {
 void HUF_InitFreqs(void) {
   unsigned int i;
 
-  freqs = (unsigned int *) Memory(max_symbols, sizeof(int));
+  freqs = Memory(max_symbols, sizeof(int));
 
   for (i = 0; i < max_symbols; i++) freqs[i] = 0;
 }
 
 /*----------------------------------------------------------------------------*/
-void HUF_CreateFreqs(unsigned char *raw_buffer, int raw_len) {
+void HUF_CreateFreqs(unsigned char *raw_buffer, size_t raw_len) {
   unsigned int ch, nbits;
   unsigned int i;
 
@@ -613,8 +619,8 @@ void HUF_InitCodeTree(void) {
 
   max_nodes = (((num_leafs - 1) | 1) + 1) << 1;
 
-  codetree = (unsigned char *) Memory(max_nodes, sizeof(char));
-  codemask = (unsigned char *) Memory(max_nodes, sizeof(char));
+  codetree = Memory(max_nodes, sizeof(char));
+  codemask = Memory(max_nodes, sizeof(char));
 
   for (i = 0; i < max_nodes; i++) {
     codetree[i] = 0;
@@ -846,7 +852,7 @@ void HUF_CreateCodeWorks(void) {
 
     codes[symbol]  = code;
     code->nbits    = nbits;
-    code->codework = (unsigned char *) Memory(maxbytes, sizeof(char));
+    code->codework = Memory(maxbytes, sizeof(char));
 
     for (j = 0; j < maxbytes; j++) code->codework[j] = 0;
 

@@ -23,6 +23,8 @@
 
 #ifdef _MSC_VER
 #define strcasecmp _stricmp
+#else
+#include <strings.h>
 #endif
 
 /*----------------------------------------------------------------------------*/
@@ -56,13 +58,13 @@
 void  Title(void);
 void  Usage(void);
 
-char *Load(char *filename, int *length, int min, int max);
-void  Save(char *filename, char *buffer, int length);
-char *Memory(int length, int size);
+unsigned char *Load(char *filename, size_t *length, size_t min, size_t max);
+void  Save(char *filename, unsigned char *buffer, size_t length);
+void *Memory(size_t length, size_t size);
 
 void  RLE_Decode(char *filename);
 void  RLE_Encode(char *filename);
-char *RLE_Code(unsigned char *raw_buffer, int raw_len, int *new_len);
+unsigned char *RLE_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len);
 
 /*----------------------------------------------------------------------------*/
 int main(int argc, char **argv) {
@@ -118,10 +120,10 @@ void Usage(void) {
 }
 
 /*----------------------------------------------------------------------------*/
-char *Load(char *filename, int *length, int min, int max) {
+unsigned char *Load(char *filename, size_t *length, size_t min, size_t max) {
   FILE *fp;
-  int   fs;
-  char *fb;
+  size_t fs;
+  unsigned char *fb;
 
   if ((fp = fopen(filename, "rb")) == NULL) EXIT("\nFile open error\n");
   fseek(fp, 0, SEEK_END);
@@ -138,7 +140,7 @@ char *Load(char *filename, int *length, int min, int max) {
 }
 
 /*----------------------------------------------------------------------------*/
-void Save(char *filename, char *buffer, int length) {
+void Save(char *filename, unsigned char *buffer, size_t length) {
   FILE *fp;
 
   if ((fp = fopen(filename, "wb")) == NULL) EXIT("\nFile create error\n");
@@ -147,10 +149,10 @@ void Save(char *filename, char *buffer, int length) {
 }
 
 /*----------------------------------------------------------------------------*/
-char *Memory(int length, int size) {
-  char *fb;
+void *Memory(size_t length, size_t size) {
+  unsigned char *fb;
 
-  fb = (char *) calloc(length, size);
+  fb = calloc(length, size);
   if (fb == NULL) EXIT("\nMemory error\n");
 
   return(fb);
@@ -159,7 +161,8 @@ char *Memory(int length, int size) {
 /*----------------------------------------------------------------------------*/
 void RLE_Decode(char *filename) {
   unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
-  unsigned int   pak_len, raw_len, header, len;
+  size_t pak_len, raw_len, len;
+  unsigned int header;
 
   printf("- decoding '%s'", filename);
 
@@ -172,7 +175,7 @@ void RLE_Decode(char *filename) {
   }
 
   raw_len = *(unsigned int *)pak_buffer >> 8;
-  raw_buffer = (unsigned char *) Memory(raw_len, sizeof(char));
+  raw_buffer = Memory(raw_len, sizeof(char));
 
   pak = pak_buffer + 4;
   raw = raw_buffer;
@@ -219,7 +222,7 @@ void RLE_Decode(char *filename) {
 /*----------------------------------------------------------------------------*/
 void RLE_Encode(char *filename) {
   unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-  unsigned int   raw_len, pak_len, new_len;
+  size_t raw_len, pak_len, new_len;
 
   printf("- encoding '%s'", filename);
 
@@ -244,12 +247,12 @@ void RLE_Encode(char *filename) {
 }
 
 /*----------------------------------------------------------------------------*/
-char *RLE_Code(unsigned char *raw_buffer, int raw_len, int *new_len) {
+unsigned char *RLE_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len) {
   unsigned char *pak_buffer, *pak, *raw, *raw_end, store[RLE_N];
   unsigned int   pak_len, len, store_len, count;
 
   pak_len = 4 + raw_len + ((raw_len + RLE_N - 1) / RLE_N);
-  pak_buffer = (unsigned char *) Memory(pak_len, sizeof(char));
+  pak_buffer = Memory(pak_len, sizeof(char));
 
   *(unsigned int *)pak_buffer = CMD_CODE_30 | (raw_len << 8);
 
