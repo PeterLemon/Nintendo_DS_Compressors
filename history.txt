@@ -38,6 +38,11 @@ Nintendo DS Compressors by CUE
 -----------------------
   - solved a bug Huffman compression (1-2-4 bits)
 
+2024-06-10: version 1.5
+-----------------------
+  - big cleanup of the tools (warnings have been fixed, code style improved)
+  - the tools now expect an input and an output path for each file
+
 *** WARNING ***
 ---------------
 You need the NDS ROM to update the ARM9 size in the ARM9 file:
