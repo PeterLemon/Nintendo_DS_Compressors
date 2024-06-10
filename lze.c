@@ -69,14 +69,13 @@ void Title(void)
 
 void Usage(void)
 {
-    EXIT("Usage: LZE command filename [filename [...]]\n"
+    EXIT("Usage: LZE command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
          "\n"
          "command:\n"
-         "  -d ... decode 'filename'\n"
-         "  -e ... encode 'filename'\n"
+         "  -d ... decode 'file_1_in' to 'file_1_out'\n"
+         "  -e ... encode 'file_1_in' to 'file_1_out'\n"
          "\n"
-         "* multiple filenames and wildcards are permitted\n"
-         "* the original file is overwritten with the new file\n");
+         "* multiple filenames are permitted\n");
 }
 
 char *Memory(int length, int size)
@@ -270,15 +269,15 @@ char *LZE_Code(unsigned char *raw_buffer, int raw_len, int *new_len)
     return pak_buffer;
 }
 
-void LZE_Decode(char *filename)
+void LZE_Decode(char *filename_in, char *filename_out)
 {
     unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
     unsigned int pak_len, raw_len, header, len, pos;
     unsigned int flags, mask;
 
-    printf("- decoding '%s'", filename);
+    printf("- decoding '%s' -> '%s'", filename_in, filename_out);
 
-    pak_buffer = Load(filename, &pak_len, LZE_MINIM, LZE_MAXIM);
+    pak_buffer = Load(filename_in, &pak_len, LZE_MINIM, LZE_MAXIM);
 
     header = *(unsigned short *)pak_buffer;
     if (header != CMD_CODE_LE)
@@ -368,7 +367,7 @@ void LZE_Decode(char *filename)
     if (raw != raw_end)
         printf(", WARNING: unexpected end of encoded file!");
 
-    Save(filename, raw_buffer, raw_len);
+    Save(filename_out, raw_buffer, raw_len);
 
     free(raw_buffer);
     free(pak_buffer);
@@ -376,14 +375,14 @@ void LZE_Decode(char *filename)
     printf("\n");
 }
 
-void LZE_Encode(char *filename)
+void LZE_Encode(char *filename_in, char *filename_out)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
     unsigned int raw_len, pak_len, new_len;
 
-    printf("- encoding '%s'", filename);
+    printf("- encoding '%s' -> '%s'", filename_in, filename_out);
 
-    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
+    raw_buffer = Load(filename_in, &raw_len, RAW_MINIM, RAW_MAXIM);
 
     pak_buffer = NULL;
     pak_len = LZE_MAXIM + 1;
@@ -397,7 +396,7 @@ void LZE_Encode(char *filename)
         pak_len = new_len;
     }
 
-    Save(filename, pak_buffer, pak_len);
+    Save(filename_out, pak_buffer, pak_len);
 
     free(pak_buffer);
     free(raw_buffer);
@@ -420,18 +419,33 @@ int main(int argc, char **argv)
         cmd = CMD_CODE_LE;
     else
         EXIT("Command not supported\n");
-    if (argc < 3)
-        EXIT("Filename not specified\n");
+
+    if (argc < 4)
+        EXIT("Filenames not specified\n");
 
     switch (cmd)
     {
         case CMD_DECODE:
-            for (arg = 2; arg < argc; arg++)
-                LZE_Decode(argv[arg]);
+            for (arg = 2; arg < argc; )
+            {
+                char *filename_in = argv[arg++];
+                if (arg == argc)
+                    EXIT("No output file name provided\n");
+                char *filename_out = argv[arg++];
+
+                LZE_Decode(filename_in, filename_out);
+            }
             break;
         case CMD_CODE_LE:
-            for (arg = 2; arg < argc; arg++)
-                LZE_Encode(argv[arg]);
+            for (arg = 2; arg < argc; )
+            {
+                char *filename_in = argv[arg++];
+                if (arg == argc)
+                    EXIT("No output file name provided\n");
+                char *filename_out = argv[arg++];
+
+                LZE_Encode(filename_in, filename_out);
+            }
             break;
         default:
             break;

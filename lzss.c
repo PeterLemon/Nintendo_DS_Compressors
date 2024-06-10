@@ -82,19 +82,18 @@ void Title(void)
 
 void Usage(void)
 {
-    EXIT("Usage: LZSS command filename [filename [...]]\n"
+    EXIT("Usage: LZSS command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
          "\n"
          "command:\n"
-         "  -d ..... decode 'filename'\n"
-         "  -evn ... encode 'filename', VRAM compatible, normal mode (LZ10)\n"
-         "  -ewn ... encode 'filename', WRAM compatible, normal mode\n"
-         "  -evf ... encode 'filename', VRAM compatible, fast mode\n"
-         "  -ewf ... encode 'filename', WRAM compatible, fast mode\n"
-         "  -evo ... encode 'filename', VRAM compatible, optimal mode (LZ-CUE)\n"
-         "  -ewo ... encode 'filename', WRAM compatible, optimal mode (LZ-CUE)\n"
+         "  -d ..... decode files\n"
+         "  -evn ... encode files, VRAM compatible, normal mode (LZ10)\n"
+         "  -ewn ... encode files, WRAM compatible, normal mode\n"
+         "  -evf ... encode files, VRAM compatible, fast mode\n"
+         "  -ewf ... encode files, WRAM compatible, fast mode\n"
+         "  -evo ... encode files, VRAM compatible, optimal mode (LZ-CUE)\n"
+         "  -ewo ... encode files, WRAM compatible, optimal mode (LZ-CUE)\n"
          "\n"
-         "* multiple filenames and wildcards are permitted\n"
-         "* the original file is overwritten with the new file\n");
+         "* multiple filenames are permitted\n");
 }
 
 void *Memory(size_t length, size_t size)
@@ -454,16 +453,16 @@ unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
     return pak_buffer;
 }
 
-void LZS_Decode(char *filename)
+void LZS_Decode(char *filename_in, char *filename_out)
 {
     unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
     size_t pak_len, raw_len;
     unsigned int header, len, pos;
     unsigned char flags, mask;
 
-    printf("- decoding '%s'", filename);
+    printf("- decoding '%s' -> '%s'", filename_in, filename_out);
 
-    pak_buffer = Load(filename, &pak_len, LZS_MINIM, LZS_MAXIM);
+    pak_buffer = Load(filename_in, &pak_len, LZS_MINIM, LZS_MAXIM);
 
     header = *pak_buffer;
     if (header != CMD_CODE_10)
@@ -526,7 +525,7 @@ void LZS_Decode(char *filename)
     if (raw != raw_end)
         printf(", WARNING: unexpected end of encoded file!");
 
-    Save(filename, raw_buffer, raw_len);
+    Save(filename_out, raw_buffer, raw_len);
 
     free(raw_buffer);
     free(pak_buffer);
@@ -534,16 +533,16 @@ void LZS_Decode(char *filename)
     printf("\n");
 }
 
-void LZS_Encode(char *filename, int mode)
+void LZS_Encode(char *filename_in, char *filename_out, int mode)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
     size_t raw_len, pak_len, new_len;
 
     lzs_vram = mode & 0xF;
 
-    printf("- encoding '%s'", filename);
+    printf("- encoding '%s' -> '%s'", filename_in, filename_out);
 
-    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
+    raw_buffer = Load(filename_in, &raw_len, RAW_MINIM, RAW_MAXIM);
 
     pak_buffer = NULL;
     pak_len = LZS_MAXIM + 1;
@@ -565,7 +564,7 @@ void LZS_Encode(char *filename, int mode)
         pak_len = new_len;
     }
 
-    Save(filename, pak_buffer, pak_len);
+    Save(filename_out, pak_buffer, pak_len);
 
     free(pak_buffer);
     free(raw_buffer);
@@ -618,18 +617,33 @@ int main(int argc, char **argv)
     }
     else
         EXIT("Command not supported\n");
-    if (argc < 3)
-        EXIT("Filename not specified\n");
+
+    if (argc < 4)
+        EXIT("Filenames not specified\n");
 
     switch (cmd)
     {
         case CMD_DECODE:
-            for (arg = 2; arg < argc; arg++)
-                LZS_Decode(argv[arg]);
+            for (arg = 2; arg < argc;)
+            {
+                char *filename_in = argv[arg++];
+                if (arg == argc)
+                    EXIT("No output file name provided\n");
+                char *filename_out = argv[arg++];
+
+                LZS_Decode(filename_in, filename_out);
+            }
             break;
         case CMD_CODE_10:
-            for (arg = 2; arg < argc; arg++)
-                LZS_Encode(argv[arg], mode);
+            for (arg = 2; arg < argc;)
+            {
+                char *filename_in = argv[arg++];
+                if (arg == argc)
+                    EXIT("No output file name provided\n");
+                char *filename_out = argv[arg++];
+
+                LZS_Encode(filename_in, filename_out, mode);
+            }
             break;
         default:
             break;

@@ -70,16 +70,15 @@ void Title(void)
 
 void Usage(void)
 {
-    EXIT("Usage: BLZ command filename [filename [...]]\n"
+    EXIT("Usage: BLZ command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
          "\n"
          "command:\n"
-         "  -d ....... decode 'filename'\n"
-         "  -en[9] ... encode 'filename', normal mode\n"
-         "  -eo[9] ... encode 'filename', optimal mode (LZ-CUE)\n"
+         "  -d ....... decode 'file_1_in' to 'file_1_out'\n"
+         "  -en[9] ... encode 'file_1_in' to 'file_1_out', normal mode\n"
+         "  -eo[9] ... encode 'file_1_in' to 'file_1_out', optimal mode (LZ-CUE)\n"
          "\n"
          "* '9' compress an ARM9 file with 0x4000 bytes decoded\n"
-         "* multiple filenames and wildcards are permitted\n"
-         "* the original file is overwritten with the new file\n"
+         "* multiple filenames are permitted\n"
          "* this codification is used in the DS overlay files\n");
 }
 
@@ -371,15 +370,15 @@ char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best)
     return pak_buffer;
 }
 
-void BLZ_Decode(char *filename)
+void BLZ_Decode(char *filename_in, char *filename_out)
 {
     unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
     unsigned int pak_len, raw_len, len, pos, inc_len, hdr_len, enc_len, dec_len;
     unsigned char flags, mask;
 
-    printf("- decoding '%s'", filename);
+    printf("- decoding '%s' -> '%s'", filename_in, filename_out);
 
-    pak_buffer = Load(filename, &pak_len, BLZ_MINIM, BLZ_MAXIM);
+    pak_buffer = Load(filename_in, &pak_len, BLZ_MINIM, BLZ_MAXIM);
 
     inc_len = *(unsigned int *)(pak_buffer + pak_len - 4);
     if (!inc_len)
@@ -463,7 +462,7 @@ void BLZ_Decode(char *filename)
     if (raw != raw_end)
         printf(", WARNING: unexpected end of encoded file!");
 
-    Save(filename, raw_buffer, raw_len);
+    Save(filename_out, raw_buffer, raw_len);
 
     free(raw_buffer);
     free(pak_buffer);
@@ -471,14 +470,14 @@ void BLZ_Decode(char *filename)
     printf("\n");
 }
 
-void BLZ_Encode(char *filename, int mode)
+void BLZ_Encode(char *filename_in, char *filename_out, int mode)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
     unsigned int raw_len, pak_len, new_len;
 
-    printf("- encoding '%s'", filename);
+    printf("- encoding '%s' -> '%s'", filename_in, filename_out);
 
-    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
+    raw_buffer = Load(filename_in, &raw_len, RAW_MINIM, RAW_MAXIM);
 
     pak_buffer = NULL;
     pak_len = BLZ_MAXIM + 1;
@@ -492,7 +491,7 @@ void BLZ_Encode(char *filename, int mode)
         pak_len = new_len;
     }
 
-    Save(filename, pak_buffer, pak_len);
+    Save(filename_out, pak_buffer, pak_len);
 
     free(pak_buffer);
     free(raw_buffer);
@@ -535,19 +534,35 @@ int main(int argc, char **argv)
     }
     else
         EXIT("Command not supported\n");
-    if (argc < 3)
-        EXIT("Filename not specified\n");
+
+    if (argc < 4)
+        EXIT("Filenames not specified\n");
 
     switch (cmd)
     {
         case CMD_DECODE:
-            for (arg = 2; arg < argc; arg++)
-                BLZ_Decode(argv[arg]);
+            for (arg = 2; arg < argc; )
+            {
+                char *filename_in = argv[arg++];
+                if (arg == argc)
+                    EXIT("No output file name provided\n");
+                char *filename_out = argv[arg++];
+
+                BLZ_Decode(filename_in, filename_out);
+            }
             break;
         case CMD_ENCODE:
             arm9 = argv[1][3] == '9' ? 1 : 0;
-            for (arg = 2; arg < argc; arg++)
-                BLZ_Encode(argv[arg], mode);
+
+            for (arg = 2; arg < argc; )
+            {
+                char *filename_in = argv[arg++];
+                if (arg == argc)
+                    EXIT("No output file name provided\n");
+                char *filename_out = argv[arg++];
+
+                BLZ_Encode(filename_in, filename_out, mode);
+            }
             break;
         default:
             break;

@@ -74,17 +74,16 @@ void Title(void)
 
 void Usage(void)
 {
-    EXIT("Usage: LZX command filename [filename [...]]\n"
+    EXIT("Usage: LZX command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
          "\n"
          "command:\n"
-         "  -d ..... decode 'filename'\n"
-         "  -evb ... encode 'filename', VRAM compatible, big endian mode (LZ11)\n"
-         "  -ewb ... encode 'filename', WRAM compatbile, big endian mode\n"
-         "  -evl ... encode 'filename', VRAM compatible, low endian mode\n"
-         "  -ewl ... encode 'filename', WRAM compatbile, low endian mode (LZ40)\n"
+         "  -d ..... decode 'file_1_in' to 'file_1_out'\n"
+         "  -evb ... encode 'file_1_in' to 'file_1_out', VRAM compatible, big endian mode (LZ11)\n"
+         "  -ewb ... encode 'file_1_in' to 'file_1_out', WRAM compatbile, big endian mode\n"
+         "  -evl ... encode 'file_1_in' to 'file_1_out', VRAM compatible, low endian mode\n"
+         "  -ewl ... encode 'file_1_in' to 'file_1_out', WRAM compatbile, low endian mode (LZ40)\n"
          "\n"
-         "* multiple filenames and wildcards are permitted\n"
-         "* the original file is overwritten with the new file\n"
+         "* multiple filenames are permitted\n"
          "* this codification is an updated version of the 'Yaz0' compression\n");
 }
 
@@ -322,15 +321,15 @@ char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd)
     return pak_buffer;
 }
 
-void LZX_Decode(char *filename)
+void LZX_Decode(char *filename_in, char *filename_out)
 {
     unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
     unsigned int pak_len, raw_len, header, len, pos, threshold, tmp;
     unsigned char flags, mask;
 
-    printf("- decoding '%s'", filename);
+    printf("- decoding '%s' -> '%s'", filename_in, filename_out);
 
-    pak_buffer = Load(filename, &pak_len, LZX_MINIM, LZX_MAXIM);
+    pak_buffer = Load(filename_in, &pak_len, LZX_MINIM, LZX_MAXIM);
 
     header = *pak_buffer;
     if ((header != CMD_CODE_11) && ((header != CMD_CODE_40)))
@@ -452,7 +451,7 @@ void LZX_Decode(char *filename)
     if (raw != raw_end)
         printf(", WARNING: unexpected end of encoded file!");
 
-    Save(filename, raw_buffer, raw_len);
+    Save(filename_out, raw_buffer, raw_len);
 
     free(raw_buffer);
     free(pak_buffer);
@@ -460,16 +459,16 @@ void LZX_Decode(char *filename)
     printf("\n");
 }
 
-void LZX_Encode(char *filename, int cmd, int vram)
+void LZX_Encode(char *filename_in, char *filename_out, int cmd, int vram)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
     unsigned int raw_len, pak_len, new_len;
 
     lzx_vram = vram;
 
-    printf("- encoding '%s'", filename);
+    printf("- encoding '%s' -> '%s'", filename_in, filename_out);
 
-    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
+    raw_buffer = Load(filename_in, &raw_len, RAW_MINIM, RAW_MAXIM);
 
     pak_buffer = NULL;
     pak_len = LZX_MAXIM + 1;
@@ -483,7 +482,7 @@ void LZX_Encode(char *filename, int cmd, int vram)
         pak_len = new_len;
     }
 
-    Save(filename, pak_buffer, pak_len);
+    Save(filename_out, pak_buffer, pak_len);
 
     free(pak_buffer);
     free(raw_buffer);
@@ -526,19 +525,34 @@ int main(int argc, char **argv)
     }
     else
         EXIT("Command not supported\n");
-    if (argc < 3)
-        EXIT("Filename not specified\n");
+
+    if (argc < 4)
+        EXIT("Filenames not specified\n");
 
     switch (cmd)
     {
         case CMD_DECODE:
-            for (arg = 2; arg < argc; arg++)
-                LZX_Decode(argv[arg]);
+            for (arg = 2; arg < argc; )
+            {
+                char *filename_in = argv[arg++];
+                if (arg == argc)
+                    EXIT("No output file name provided\n");
+                char *filename_out = argv[arg++];
+
+                LZX_Decode(filename_in, filename_out);
+            }
             break;
         case CMD_CODE_11:
         case CMD_CODE_40:
-            for (arg = 2; arg < argc; arg++)
-                LZX_Encode(argv[arg], cmd, vram);
+            for (arg = 2; arg < argc; )
+            {
+                char *filename_in = argv[arg++];
+                if (arg == argc)
+                    EXIT("No output file name provided\n");
+                char *filename_out = argv[arg++];
+
+                LZX_Encode(filename_in, filename_out, cmd, vram);
+            }
             break;
         default:
             break;

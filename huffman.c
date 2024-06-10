@@ -98,20 +98,19 @@ void Title(void)
 
 void Usage(void)
 {
-    printf("Usage: HUFFMAN command filename [filename [...]]\n"
+    printf("Usage: HUFFMAN command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
            "\n"
            "command:\n"
-           "  -d .... decode 'filename'\n"
-           "  -e8 ... encode 'filename', 8-bits mode\n"
-           "  -e4 ... encode 'filename', 4-bits mode\n"
+           "  -d .... decode 'file_1_in' to 'file_1_out'\n"
+           "  -e8 ... encode 'file_1_in' to 'file_1_out', 8-bits mode\n"
+           "  -e4 ... encode 'file_1_in' to 'file_1_out', 4-bits mode\n"
 #ifdef _CUE_MODES_21_22_
-           "  -e2 ... encode 'filename', 2-bits mode\n"
-           "  -e1 ... encode 'filename', 1-bit mode\n"
+           "  -e2 ... encode 'file_1_in' to 'file_1_out', 2-bits mode\n"
+           "  -e1 ... encode 'file_1_in' to 'file_1_out', 1-bit mode\n"
 #endif
-           "  -e0 ... encode 'filename', best mode\n"
+           "  -e0 ... encode 'file_1_in' to 'file_1_out', best mode\n"
            "\n"
-           "* multiple filenames and wildcards are permitted\n"
-           "* the original file is overwritten with the new file\n"
+           "* multiple filenames are permitted\n"
 #ifdef _CUE_MODES_21_22_
            "* 1/2-bits are not standard modes\n"
 #endif
@@ -820,7 +819,7 @@ unsigned char *HUF_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
     return pak_buffer;
 }
 
-void HUF_Decode(char *filename)
+void HUF_Decode(char *filename_in, char *filename_out)
 {
     unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
     size_t pak_len, raw_len;
@@ -828,9 +827,9 @@ void HUF_Decode(char *filename)
     unsigned char *tree;
     unsigned int pos, next, mask4, code, ch, nbits;
 
-    printf("- decoding '%s'", filename);
+    printf("- decoding '%s' -> '%s'", filename_in, filename_out);
 
-    pak_buffer = Load(filename, &pak_len, HUF_MINIM, HUF_MAXIM);
+    pak_buffer = Load(filename_in, &pak_len, HUF_MINIM, HUF_MAXIM);
 
     header = *pak_buffer;
 #ifdef _CUE_MODES_21_22_
@@ -905,7 +904,7 @@ void HUF_Decode(char *filename)
     if (raw != raw_end)
         printf(", WARNING: unexpected end of encoded file!");
 
-    Save(filename, raw_buffer, raw_len);
+    Save(filename_out, raw_buffer, raw_len);
 
     free(raw_buffer);
     free(pak_buffer);
@@ -913,16 +912,16 @@ void HUF_Decode(char *filename)
     printf("\n");
 }
 
-void HUF_Encode(char *filename, int cmd)
+void HUF_Encode(char *filename_in, char *filename_out, int cmd)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
     size_t raw_len, pak_len, new_len;
 
-    printf("- encoding '%s'", filename);
+    printf("- encoding '%s' -> '%s'", filename_in, filename_out);
 
     num_bits = cmd & 0xF;
 
-    raw_buffer = Load(filename, &raw_len, RAW_MINIM, RAW_MAXIM);
+    raw_buffer = Load(filename_in, &raw_len, RAW_MINIM, RAW_MAXIM);
 
     pak_buffer = NULL;
     pak_len = HUF_MAXIM + 1;
@@ -969,7 +968,7 @@ void HUF_Encode(char *filename, int cmd)
         pak_len = new_len;
     }
 
-    Save(filename, pak_buffer, pak_len);
+    Save(filename_out, pak_buffer, pak_len);
 
     free(pak_buffer);
     free(raw_buffer);
@@ -1002,14 +1001,22 @@ int main(int argc, char **argv)
         cmd = CMD_CODE_20;
     else
         EXIT("Command not supported\n");
-    if (argc < 3)
-        EXIT("Filename not specified\n");
+
+    if (argc < 4)
+        EXIT("Filenames not specified\n");
 
     switch (cmd)
     {
         case CMD_DECODE:
-            for (arg = 2; arg < argc; arg++)
-                HUF_Decode(argv[arg]);
+            for (arg = 2; arg < argc; )
+            {
+                char *filename_in = argv[arg++];
+                if (arg == argc)
+                    EXIT("No output file name provided\n");
+                char *filename_out = argv[arg++];
+
+                HUF_Decode(filename_in, filename_out);
+            }
             break;
         case CMD_CODE_28:
         case CMD_CODE_24:
@@ -1018,8 +1025,15 @@ int main(int argc, char **argv)
         case CMD_CODE_21:
 #endif
         case CMD_CODE_20:
-            for (arg = 2; arg < argc; arg++)
-                HUF_Encode(argv[arg], cmd);
+            for (arg = 2; arg < argc; )
+            {
+                char *filename_in = argv[arg++];
+                if (arg == argc)
+                    EXIT("No output file name provided\n");
+                char *filename_out = argv[arg++];
+
+                HUF_Encode(filename_in, filename_out, cmd);
+            }
             break;
         default:
             break;
