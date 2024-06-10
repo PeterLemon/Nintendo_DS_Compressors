@@ -78,20 +78,20 @@ void Usage(void)
          "* multiple filenames are permitted\n");
 }
 
-char *Memory(int length, int size)
+void *Memory(size_t length, size_t size)
 {
-    char *fb = calloc(length, size);
+    void *fb = calloc(length, size);
     if (fb == NULL)
         EXIT("\nMemory error\n");
 
     return fb;
 }
 
-char *Load(char *filename, int *length, int min, int max)
+unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
 {
     FILE *fp;
-    int fs;
-    char *fb;
+    size_t fs;
+    unsigned char *fb;
 
     if ((fp = fopen(filename, "rb")) == NULL)
         EXIT("\nFile open error\n");
@@ -111,7 +111,7 @@ char *Load(char *filename, int *length, int min, int max)
     return fb;
 }
 
-void Save(char *filename, char *buffer, int length)
+void Save(char *filename, unsigned char *buffer, size_t length)
 {
     FILE *fp;
 
@@ -123,14 +123,14 @@ void Save(char *filename, char *buffer, int length)
         EXIT("\nFile close error\n");
 }
 
-char *LZE_Code(unsigned char *raw_buffer, int raw_len, int *new_len)
+unsigned char *LZE_Code(unsigned char *raw_buffer, int raw_len, int *new_len)
 {
     unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg, store[LZE_N1 - 1];
     unsigned int pak_len, len, pos, len_best, pos_best;
     unsigned int mode, nbits, store_len;
 
     pak_len = 4 + raw_len + ((raw_len + 7) / 8);
-    pak_buffer = (unsigned char *)Memory(pak_len, sizeof(char));
+    pak_buffer = Memory(pak_len, sizeof(char));
 
     *(unsigned short *)pak_buffer = CMD_CODE_LE;
     *(unsigned int *)(pak_buffer + 2) = raw_len;
@@ -272,7 +272,8 @@ char *LZE_Code(unsigned char *raw_buffer, int raw_len, int *new_len)
 void LZE_Decode(char *filename_in, char *filename_out)
 {
     unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
-    unsigned int pak_len, raw_len, header, len, pos;
+    size_t pak_len;
+    unsigned int raw_len, header, len, pos;
     unsigned int flags, mask;
 
     printf("- decoding '%s' -> '%s'", filename_in, filename_out);
@@ -288,7 +289,7 @@ void LZE_Decode(char *filename_in, char *filename_out)
     }
 
     raw_len = *(unsigned int *)(pak_buffer + 2);
-    raw_buffer = (unsigned char *)Memory(raw_len, sizeof(char));
+    raw_buffer = Memory(raw_len, sizeof(char));
 
     pak = pak_buffer + 6;
     raw = raw_buffer;
@@ -378,7 +379,8 @@ void LZE_Decode(char *filename_in, char *filename_out)
 void LZE_Encode(char *filename_in, char *filename_out)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-    unsigned int raw_len, pak_len, new_len;
+    size_t raw_len;
+    unsigned int pak_len, new_len;
 
     printf("- encoding '%s' -> '%s'", filename_in, filename_out);
 

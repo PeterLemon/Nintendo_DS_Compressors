@@ -87,7 +87,7 @@ void Usage(void)
          "* this codification is an updated version of the 'Yaz0' compression\n");
 }
 
-char *Memory(int length, int size)
+void *Memory(size_t length, size_t size)
 {
     char *fb = calloc(length, size);
     if (fb == NULL)
@@ -96,11 +96,11 @@ char *Memory(int length, int size)
     return fb;
 }
 
-char *Load(char *filename, int *length, int min, int max)
+unsigned char *Load(char *filename, size_t *length, size_t min, size_t max)
 {
     FILE *fp;
-    int fs;
-    char *fb;
+    size_t fs;
+    unsigned char *fb;
 
     if ((fp = fopen(filename, "rb")) == NULL)
         EXIT("\nFile open error\n");
@@ -120,7 +120,7 @@ char *Load(char *filename, int *length, int min, int max)
     return fb;
 }
 
-void Save(char *filename, char *buffer, int length)
+void Save(char *filename, unsigned char *buffer, size_t length)
 {
     FILE *fp;
 
@@ -132,7 +132,7 @@ void Save(char *filename, char *buffer, int length)
         EXIT("\nFile close error\n");
 }
 
-char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd)
+unsigned char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd)
 {
     unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg;
     unsigned int pak_len, max, len, pos, len_best, pos_best;
@@ -164,7 +164,7 @@ char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd)
     }
 
     pak_len = 4 + raw_len + ((raw_len + 7) / 8) + 3;
-    pak_buffer = (unsigned char *)Memory(pak_len, sizeof(char));
+    pak_buffer = Memory(pak_len, sizeof(char));
 
     *(unsigned int *)pak_buffer = cmd | (raw_len << 8);
 
@@ -263,8 +263,10 @@ char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd)
             {
                 raw += len_best;
                 SEARCH(len_next, pos_next);
+                (void)pos_next; // Unused
                 raw -= len_best - 1;
                 SEARCH(len_post, pos_post);
+                (void)pos_post; // Unused
                 raw--;
 
                 if (len_best + len_next <= 1 + len_post)
@@ -324,7 +326,8 @@ char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd)
 void LZX_Decode(char *filename_in, char *filename_out)
 {
     unsigned char *pak_buffer, *raw_buffer, *pak, *raw, *pak_end, *raw_end;
-    unsigned int pak_len, raw_len, header, len, pos, threshold, tmp;
+    size_t pak_len;
+    unsigned int raw_len, header, len, pos, threshold, tmp;
     unsigned char flags, mask;
 
     printf("- decoding '%s' -> '%s'", filename_in, filename_out);
@@ -340,13 +343,14 @@ void LZX_Decode(char *filename_in, char *filename_out)
     }
 
     raw_len = *(unsigned int *)pak_buffer >> 8;
-    raw_buffer = (unsigned char *)Memory(raw_len, sizeof(char));
+    raw_buffer = Memory(raw_len, sizeof(char));
 
     pak = pak_buffer + 4;
     raw = raw_buffer;
     pak_end = pak_buffer + pak_len;
     raw_end = raw_buffer + raw_len;
 
+    flags = 0;
     mask = 0;
 
     while (raw < raw_end)
@@ -462,7 +466,8 @@ void LZX_Decode(char *filename_in, char *filename_out)
 void LZX_Encode(char *filename_in, char *filename_out, int cmd, int vram)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-    unsigned int raw_len, pak_len, new_len;
+    size_t raw_len;
+    unsigned int pak_len, new_len;
 
     lzx_vram = vram;
 
