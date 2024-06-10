@@ -101,14 +101,14 @@ void Usage(void)
     printf("Usage: HUFFMAN command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
            "\n"
            "command:\n"
-           "  -d .... decode 'file_1_in'\n"
-           "  -e8 ... encode 'file_1_in', 8-bits mode\n"
-           "  -e4 ... encode 'file_1_in', 4-bits mode\n"
+           "  -d .... decode files\n"
+           "  -e8 ... encode files, 8-bits mode\n"
+           "  -e4 ... encode files, 4-bits mode\n"
 #ifdef _CUE_MODES_21_22_
-           "  -e2 ... encode 'file_1_in', 2-bits mode\n"
-           "  -e1 ... encode 'file_1_in', 1-bit mode\n"
+           "  -e2 ... encode files, 2-bits mode\n"
+           "  -e1 ... encode files, 1-bit mode\n"
 #endif
-           "  -e0 ... encode 'file_1_in', best mode\n"
+           "  -e0 ... encode files, best mode\n"
            "\n"
            "* multiple filenames are permitted\n"
 #ifdef _CUE_MODES_21_22_

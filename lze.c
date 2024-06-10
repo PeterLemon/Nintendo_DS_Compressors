@@ -72,8 +72,8 @@ void Usage(void)
     EXIT("Usage: LZE command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
          "\n"
          "command:\n"
-         "  -d ... decode 'file_1_in'\n"
-         "  -e ... encode 'file_1_in'\n"
+         "  -d ... decode files\n"
+         "  -e ... encode files\n"
          "\n"
          "* multiple filenames are permitted\n");
 }
