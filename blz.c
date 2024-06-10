@@ -73,9 +73,9 @@ void Usage(void)
     EXIT("Usage: BLZ command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
          "\n"
          "command:\n"
-         "  -d ....... decode 'file_1_in' to 'file_1_out'\n"
-         "  -en[9] ... encode 'file_1_in' to 'file_1_out', normal mode\n"
-         "  -eo[9] ... encode 'file_1_in' to 'file_1_out', optimal mode (LZ-CUE)\n"
+         "  -d ....... decode 'file_1_in'\n"
+         "  -en[9] ... encode 'file_1_in', normal mode\n"
+         "  -eo[9] ... encode 'file_1_in', optimal mode (LZ-CUE)\n"
          "\n"
          "* '9' compress an ARM9 file with 0x4000 bytes decoded\n"
          "* multiple filenames are permitted\n"
@@ -296,8 +296,7 @@ unsigned char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, in
         if (pak - pak_buffer + raw_len - (raw - raw_buffer) < pak_tmp + raw_tmp)
         {
 #else
-        if ((((pak - pak_buffer + raw_len - (raw - raw_buffer)) + 3) & -4)
-            < pak_tmp + raw_tmp)
+        if ((((pak - pak_buffer + raw_len - (raw - raw_buffer)) + 3) & -4) < pak_tmp + raw_tmp)
         {
 #endif
             pak_tmp = pak - pak_buffer;
@@ -543,7 +542,7 @@ int main(int argc, char **argv)
     switch (cmd)
     {
         case CMD_DECODE:
-            for (arg = 2; arg < argc; )
+            for (arg = 2; arg < argc;)
             {
                 char *filename_in = argv[arg++];
                 if (arg == argc)
@@ -556,7 +555,7 @@ int main(int argc, char **argv)
         case CMD_ENCODE:
             arm9 = argv[1][3] == '9' ? 1 : 0;
 
-            for (arg = 2; arg < argc; )
+            for (arg = 2; arg < argc;)
             {
                 char *filename_in = argv[arg++];
                 if (arg == argc)

@@ -69,8 +69,8 @@ void Usage(void)
     EXIT("Usage: RLE command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
          "\n"
          "command:\n"
-         "  -d ... decode 'file_1_in' to 'file_1_out'\n"
-         "  -e ... encode 'file_1_in' to 'file_1_out'\n"
+         "  -d ... decode 'file_1_in'\n"
+         "  -e ... encode 'file_1_in'\n"
          "\n"
          "* multiple filenames are permitted\n");
 }
@@ -301,7 +301,7 @@ int main(int argc, char **argv)
     switch (cmd)
     {
         case CMD_DECODE:
-            for (arg = 2; arg < argc; )
+            for (arg = 2; arg < argc;)
             {
                 char *filename_in = argv[arg++];
                 if (arg == argc)
@@ -312,7 +312,7 @@ int main(int argc, char **argv)
             }
             break;
         case CMD_CODE_30:
-            for (arg = 2; arg < argc; )
+            for (arg = 2; arg < argc;)
             {
                 char *filename_in = argv[arg++];
                 if (arg == argc)

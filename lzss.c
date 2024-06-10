@@ -71,7 +71,6 @@ size_t pos_ring, len_ring, lzs_vram;
         exit(-1);     \
     }
 
-
 void Title(void)
 {
     printf("\n"
@@ -268,8 +267,7 @@ void LZS_InitTree(void)
         dad[i] = LZS_NIL;
 }
 
-unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len,
-                        size_t best)
+unsigned char *LZS_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len, size_t best)
 {
     unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg;
     size_t pak_len, len, pos, len_best, pos_best;

@@ -77,11 +77,11 @@ void Usage(void)
     EXIT("Usage: LZX command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
          "\n"
          "command:\n"
-         "  -d ..... decode 'file_1_in' to 'file_1_out'\n"
-         "  -evb ... encode 'file_1_in' to 'file_1_out', VRAM compatible, big endian mode (LZ11)\n"
-         "  -ewb ... encode 'file_1_in' to 'file_1_out', WRAM compatbile, big endian mode\n"
-         "  -evl ... encode 'file_1_in' to 'file_1_out', VRAM compatible, low endian mode\n"
-         "  -ewl ... encode 'file_1_in' to 'file_1_out', WRAM compatbile, low endian mode (LZ40)\n"
+         "  -d ..... decode 'file_1_in'\n"
+         "  -evb ... encode 'file_1_in', VRAM compatible, big endian mode (LZ11)\n"
+         "  -ewb ... encode 'file_1_in', WRAM compatbile, big endian mode\n"
+         "  -evl ... encode 'file_1_in', VRAM compatible, low endian mode\n"
+         "  -ewl ... encode 'file_1_in', WRAM compatbile, low endian mode (LZ40)\n"
          "\n"
          "* multiple filenames are permitted\n"
          "* this codification is an updated version of the 'Yaz0' compression\n");
@@ -537,7 +537,7 @@ int main(int argc, char **argv)
     switch (cmd)
     {
         case CMD_DECODE:
-            for (arg = 2; arg < argc; )
+            for (arg = 2; arg < argc;)
             {
                 char *filename_in = argv[arg++];
                 if (arg == argc)
@@ -549,7 +549,7 @@ int main(int argc, char **argv)
             break;
         case CMD_CODE_11:
         case CMD_CODE_40:
-            for (arg = 2; arg < argc; )
+            for (arg = 2; arg < argc;)
             {
                 char *filename_in = argv[arg++];
                 if (arg == argc)

@@ -101,14 +101,14 @@ void Usage(void)
     printf("Usage: HUFFMAN command file_1_in file_1_out [file_2_in file_2_out [...]]\n"
            "\n"
            "command:\n"
-           "  -d .... decode 'file_1_in' to 'file_1_out'\n"
-           "  -e8 ... encode 'file_1_in' to 'file_1_out', 8-bits mode\n"
-           "  -e4 ... encode 'file_1_in' to 'file_1_out', 4-bits mode\n"
+           "  -d .... decode 'file_1_in'\n"
+           "  -e8 ... encode 'file_1_in', 8-bits mode\n"
+           "  -e4 ... encode 'file_1_in', 4-bits mode\n"
 #ifdef _CUE_MODES_21_22_
-           "  -e2 ... encode 'file_1_in' to 'file_1_out', 2-bits mode\n"
-           "  -e1 ... encode 'file_1_in' to 'file_1_out', 1-bit mode\n"
+           "  -e2 ... encode 'file_1_in', 2-bits mode\n"
+           "  -e1 ... encode 'file_1_in', 1-bit mode\n"
 #endif
-           "  -e0 ... encode 'file_1_in' to 'file_1_out', best mode\n"
+           "  -e0 ... encode 'file_1_in', best mode\n"
            "\n"
            "* multiple filenames are permitted\n"
 #ifdef _CUE_MODES_21_22_
@@ -1008,7 +1008,7 @@ int main(int argc, char **argv)
     switch (cmd)
     {
         case CMD_DECODE:
-            for (arg = 2; arg < argc; )
+            for (arg = 2; arg < argc;)
             {
                 char *filename_in = argv[arg++];
                 if (arg == argc)
@@ -1025,7 +1025,7 @@ int main(int argc, char **argv)
         case CMD_CODE_21:
 #endif
         case CMD_CODE_20:
-            for (arg = 2; arg < argc; )
+            for (arg = 2; arg < argc;)
             {
                 char *filename_in = argv[arg++];
                 if (arg == argc)
