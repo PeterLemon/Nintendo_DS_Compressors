@@ -7,3 +7,6 @@ all: $(BIN)
 
 clean:
 	rm -rf $(BIN)
+
+format:
+	clang-format -i *.c
