@@ -163,7 +163,7 @@ short BLZ_CRC16(unsigned char *buffer, unsigned int length)
     return crc;
 }
 
-unsigned char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int best)
+unsigned char *BLZ_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len, size_t best)
 {
     unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg, *tmp;
     unsigned int pak_len, inc_len, hdr_len, enc_len, len, pos, max;
@@ -241,6 +241,7 @@ unsigned char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, in
     raw_end = raw_buffer + raw_new;
 
     mask = 0;
+    flg = NULL;
 
     while (raw < raw_end)
     {
@@ -279,6 +280,8 @@ unsigned char *BLZ_Code(unsigned char *raw_buffer, int raw_len, int *new_len, in
         }
         // LZ-CUE optimization end
 
+        if (flg == NULL)
+            EXIT(", ERROR: flg is NULL!\n");
         *flg <<= 1;
         if (len_best > BLZ_THRESHOLD)
         {
@@ -451,7 +454,10 @@ void BLZ_Decode(char *filename_in, char *filename_out)
             }
             pos = (pos & 0xFFF) + 3;
             while (len--)
-                *raw++ = *(raw - pos);
+            {
+                *raw = *(raw - pos);
+                raw++;
+            }
         }
     }
 
@@ -473,8 +479,7 @@ void BLZ_Decode(char *filename_in, char *filename_out)
 void BLZ_Encode(char *filename_in, char *filename_out, int mode)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-    size_t raw_len;
-    unsigned int pak_len, new_len;
+    size_t raw_len, pak_len, new_len;
 
     printf("- encoding '%s' -> '%s'", filename_in, filename_out);
 

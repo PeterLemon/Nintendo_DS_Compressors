@@ -56,7 +56,7 @@
                // * 3 (flag + 2 end-bytes)
                // 4 + 0x00FFFFFF + 0x00200000 + 3 + padding
 
-int lzx_vram;
+unsigned int lzx_vram;
 
 #define EXIT(text)    \
     {                 \
@@ -132,7 +132,7 @@ void Save(char *filename, unsigned char *buffer, size_t length)
         EXIT("\nFile close error\n");
 }
 
-unsigned char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, int cmd)
+unsigned char *LZX_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len, int cmd)
 {
     unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg;
     unsigned int pak_len, max, len, pos, len_best, pos_best;
@@ -173,6 +173,7 @@ unsigned char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, in
     raw_end = raw_buffer + raw_len;
 
     mask = 0;
+    flg = NULL;
 
     //------------------------------------------------------------------------------
     // LZ11: - if x>1: xA BC <-------- copy ('x'   +  0x1) bytes from -('ABC'+1)
@@ -276,6 +277,8 @@ unsigned char *LZX_Code(unsigned char *raw_buffer, int raw_len, int *new_len, in
             if (len_best >= LZX_THRESHOLD)
             {
                 raw += len_best;
+                if (flg == NULL)
+                    EXIT(", ERROR: flg is NULL!\n");
                 *flg = -(-*flg | mask);
                 if (len_best > LZX_F1 - 1)
                 {
@@ -443,7 +446,10 @@ void LZX_Decode(char *filename_in, char *filename_out)
             }
 
             while (len--)
-                *raw++ = *(raw - pos);
+            {
+                *raw = *(raw - pos);
+                raw++;
+            }
         }
     }
 
@@ -466,8 +472,7 @@ void LZX_Decode(char *filename_in, char *filename_out)
 void LZX_Encode(char *filename_in, char *filename_out, int cmd, int vram)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-    size_t raw_len;
-    unsigned int pak_len, new_len;
+    size_t raw_len, pak_len, new_len;
 
     lzx_vram = vram;
 

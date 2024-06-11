@@ -123,7 +123,7 @@ void Save(char *filename, unsigned char *buffer, size_t length)
         EXIT("\nFile close error\n");
 }
 
-unsigned char *LZE_Code(unsigned char *raw_buffer, int raw_len, int *new_len)
+unsigned char *LZE_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_len)
 {
     unsigned char *pak_buffer, *pak, *raw, *raw_end, *flg, store[LZE_N1 - 1];
     unsigned int pak_len, len, pos, len_best, pos_best;
@@ -141,6 +141,7 @@ unsigned char *LZE_Code(unsigned char *raw_buffer, int raw_len, int *new_len)
 
     nbits = 0;
     store_len = 0;
+    flg = NULL;
 
     while (raw < raw_end)
     {
@@ -238,6 +239,8 @@ unsigned char *LZE_Code(unsigned char *raw_buffer, int raw_len, int *new_len)
                 *pak++ = store[0];
                 *pak++ = store[1];
                 *pak++ = store[2];
+                if (flg == NULL)
+                    EXIT(", ERROR: flg is NULL!\n");
                 *flg |= LZE_COPY3 << nbits;
                 nbits = (nbits + LZE_SHIFT) & 0x7;
                 store_len = 0;
@@ -322,7 +325,10 @@ void LZE_Decode(char *filename_in, char *filename_out)
             }
             pos = (pos & 0xFFF) + LZE_N1 + 1;
             while (len--)
-                *raw++ = *(raw - pos);
+            {
+                *raw = *(raw - pos);
+                raw++;
+            }
         }
         else if (mask == LZE_LZS62)
         {
@@ -337,7 +343,10 @@ void LZE_Decode(char *filename_in, char *filename_out)
             }
             pos = (pos & 0x3) + 1;
             while (len--)
-                *raw++ = *(raw - pos);
+            {
+                *raw = *(raw - pos);
+                raw++;
+            }
         }
         else if (mask == LZE_COPY1)
         {
@@ -379,8 +388,7 @@ void LZE_Decode(char *filename_in, char *filename_out)
 void LZE_Encode(char *filename_in, char *filename_out)
 {
     unsigned char *raw_buffer, *pak_buffer, *new_buffer;
-    size_t raw_len;
-    unsigned int pak_len, new_len;
+    size_t raw_len, pak_len, new_len;
 
     printf("- encoding '%s' -> '%s'", filename_in, filename_out);
 
