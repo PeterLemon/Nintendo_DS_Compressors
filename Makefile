@@ -1,6 +1,6 @@
 SRC = $(wildcard *.c)
 BIN = $(SRC:%.c=%)
-CFLAGS = -O3 -Wall -Wextra -Wno-unused-parameter -pedantic -std=c11
+CFLAGS = -O3 -Wall -Wextra -pedantic -std=c11
 CC = gcc
 
 .PHONY: all clean format
