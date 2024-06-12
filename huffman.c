@@ -308,6 +308,8 @@ void HUF_CreateTree(void)
 
 #ifdef _CUE_LOG_
     printf("\n--- CreateTree --------------------------------\n");
+
+    unsigned int j;
     for (i = 0; i < num_nodes; i++)
     {
         printf("s:%03X w:%06X n:%03X", tree[i]->symbol, tree[i]->weight, i);
@@ -535,10 +537,10 @@ void HUF_CreateCodeTree(void)
             codetree[i] |= codemask[i];
 
 #ifdef _CUE_LOG_
-    unsigned char tbl[256][48];
+    char tbl[256][48];
     unsigned int ln, li, ll, lr;
     unsigned int rn, ri, rl, rr;
-    unsigned char ls[16], rs[16], is[16], jl[16], jr[16];
+    char ls[16], rs[16], is[16], jl[16], jr[16];
     unsigned int j, k;
 
     printf("\n--- CreateCodeTree ----------------------------\n");
@@ -573,8 +575,8 @@ void HUF_CreateCodeTree(void)
 
         sprintf(tbl[i], "N:%03X L:%02X R:%02X %s %s", i, li, ri, ls, rs);
 
-        if ((i && (li > HUF_NEXT) && (ln != 0xFF)) || (ri > HUF_NEXT) && (rn != 0xFF))
-            sprintf(tbl[i], "%s * WRONG CODE *", tbl[i]);
+        if ((i && (li > HUF_NEXT) && (ln != 0xFF)) || ((ri > HUF_NEXT) && (rn != 0xFF)))
+            strcat(tbl[i], " * WRONG CODE *");
 
         sprintf(is, "%03X", i);
         for (j = 0; j < i; j++)
@@ -801,7 +803,7 @@ unsigned char *HUF_Code(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
     }
     if (pak < pak_buffer + pak_len)
     {
-        printf("(+%X more byte", pak_buffer + pak_len - pak);
+        printf("(+%X more byte", (unsigned int)(pak_buffer + pak_len - pak));
         if (pak + 1 != pak_buffer + pak_len)
             printf("s");
         printf(")\n");

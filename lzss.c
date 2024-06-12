@@ -398,12 +398,14 @@ unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
     LZS_InsertNode(r);
 
     mask = 0;
+    flg = NULL;
 
     while (len)
     {
         if (!(mask >>= LZS_SHIFT))
         {
-            *(flg = pak++) = 0;
+            flg = pak++;
+            *flg = 0;
             mask = LZS_MASK;
         }
 
@@ -412,6 +414,8 @@ unsigned char *LZS_Fast(unsigned char *raw_buffer, size_t raw_len, size_t *new_l
 
         if (len_ring > LZS_THRESHOLD)
         {
+            if (flg == NULL)
+                EXIT(", ERROR: flg is NULL!\n");
             *flg |= mask;
             pos_ring = ((r - pos_ring) & (LZS_N - 1)) - 1;
             *pak++ = ((len_ring - LZS_THRESHOLD - 1) << 4) | (pos_ring >> 8);
